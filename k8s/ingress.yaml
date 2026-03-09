@@ -4,7 +4,6 @@ metadata:
   name: taskmgt
   namespace: taskmgt
   annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-prod
     kubernetes.io/ingress.class: traefik
 spec:
   rules:
@@ -18,7 +17,3 @@ spec:
                 name: frontend
                 port:
                   number: 80
-  tls:
-    - hosts:
-        - tasks.k8s.ecafe.org
-      secretName: tasks.k8s.ecafe.org-production
