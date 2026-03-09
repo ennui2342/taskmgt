@@ -1,0 +1,23 @@
+# Data exports
+*.json.bak
+rememberthemilk_export_*.json
+filters.json
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+dist/
+
+# Node
+react-src/node_modules/
+react-src/dist/
+
+# Test artifacts
+.pytest_cache/
+test-results/
+playwright-report/
+
+# OS
+.DS_Store

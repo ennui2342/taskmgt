@@ -1,0 +1,69 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+      target: base
+    ports:
+      - "8081:8081"
+    environment:
+      DATABASE_PATH: /data/tasks.db
+      FILTERS_PATH: /app/filters.json
+    volumes:
+      - ../aswarm/pipelines/memory:/data
+      - ./filters.json:/app/filters.json
+
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    environment:
+      PYTHONPATH: /app/src
+    volumes:
+      - ./src:/app/src
+      - ./tests:/app/tests
+      - ./react-src/src:/app/react-src/src
+      - ./react-src/index.html:/app/react-src/index.html
+      - ./react-src/vite.config.js:/app/react-src/vite.config.js
+      - ./react-src/tailwind.config.js:/app/react-src/tailwind.config.js
+      - ./react-src/postcss.config.js:/app/react-src/postcss.config.js
+    command: pytest -v
+
+  # ── React frontend (dev) ────────────────────────────────────────────────────
+  react-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.react
+      target: dev
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_TARGET: http://api:8081
+    volumes:
+      - ./react-src:/app
+      - /app/node_modules    # isolate container node_modules from host
+    depends_on:
+      - api
+
+  # ── React frontend (prod) ────────────────────────────────────────────────────
+  react-app:
+    build:
+      context: .
+      dockerfile: Dockerfile.react
+      target: prod
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  test-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+      target: test
+    environment:
+      PYTHONPATH: /app/src
+    volumes:
+      - ./src:/app/src
+      - ./tests:/app/tests
