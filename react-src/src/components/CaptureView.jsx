@@ -11,6 +11,7 @@ const STATIC = {
 export default function CaptureView() {
   const [text, setText] = useState('')
   const [added, setAdded] = useState(false)
+  const [error, setError] = useState('')
   const inputRef = useRef(null)
   const createTask = useCreateTask()
   const { data: tags = [] } = useTags()
@@ -50,9 +51,15 @@ export default function CaptureView() {
     e?.preventDefault()
     const trimmed = text.trim()
     if (!trimmed) return
-    await createTask.mutateAsync(trimmed)
-    setText('')
-    setAdded(true)
+    try {
+      await createTask.mutateAsync(trimmed)
+      setText('')
+      setError('')
+      setAdded(true)
+    } catch (err) {
+      setError(err.message ?? 'Failed to add task')
+      return
+    }
     setTimeout(() => setAdded(false), 1500)
     inputRef.current?.focus()
   }
@@ -133,6 +140,9 @@ export default function CaptureView() {
           <span className="capture-added text-sm text-green-400">✓ Added</span>
         )}
       </div>
+      {error && (
+        <p className="flex-shrink-0 rounded-lg bg-red-900/40 px-3 py-2 text-sm text-red-300">{error}</p>
+      )}
     </div>
   )
 }
