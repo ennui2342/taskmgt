@@ -1,6 +1,7 @@
 import json
 import os
 import uuid
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -8,6 +9,8 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import Response
 
 from .db import (
+    init_db,
+    close_db,
     db_counts,
     db_create_task,
     db_delete_task,
@@ -32,7 +35,14 @@ from .models import (
 )
 from .parser import parse_text, strip_tokens
 
-app = FastAPI(title="aswarm Task API")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_db()
+    yield
+    await close_db()
+
+
+app = FastAPI(title="aswarm Task API", lifespan=lifespan)
 
 
 def _row_to_task(row: dict) -> Task:
