@@ -64,7 +64,10 @@ export default function MobileShell() {
         style={{ width: '300vw', transform: `translateX(-${pane * 100}vw)` }}
       >
         {/* Pane 0: Navigation */}
-        <div className="w-screen h-full overflow-y-auto">
+        <div
+          className="w-screen h-full overflow-y-auto"
+          onClick={e => { if (e.target.closest('a')) { setPane(1); setSelectedId(null) } }}
+        >
           <Sidebar />
         </div>
 
