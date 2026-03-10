@@ -33,6 +33,7 @@ from .models import (
     TaskCreate,
     TaskPatch,
 )
+from .mqtt import mqtt_publish
 from .parser import parse_text, strip_tokens
 
 @asynccontextmanager
@@ -89,6 +90,7 @@ async def create_task(body: TaskCreate):
     }
     await db_create_task(row)
     row["tags"] = json.loads(row["tags"])
+    mqtt_publish("tasks/read", body.text)
     return _row_to_task(row)
 
 
@@ -141,6 +143,8 @@ async def update_task(task_id: str, body: TaskPatch):
 
     await db_update_task(task_id, fields)
     row = await db_get_task(task_id)
+    if body.text is not None:
+        mqtt_publish("tasks/read", body.text)
     return _row_to_task(row)
 
 
