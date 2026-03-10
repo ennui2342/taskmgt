@@ -3,10 +3,17 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#4338ca" />
+    <link rel="manifest" href="/manifest.json" />
     <title>aswarm Taskboard</title>
   </head>
   <body class="h-full">
     <div id="root" class="h-full"></div>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'))
+      }
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

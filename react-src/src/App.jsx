@@ -1,8 +1,9 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Sidebar from './components/Sidebar'
 import MainPanel from './components/MainPanel'
+import CaptureView from './components/CaptureView'
 
-export default function App() {
+function Shell() {
   return (
     <div className="flex h-full overflow-hidden bg-gray-900 text-gray-100">
       <Sidebar />
@@ -14,5 +15,14 @@ export default function App() {
         </Routes>
       </div>
     </div>
+  )
+}
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/capture" element={<CaptureView />} />
+      <Route path="/*"       element={<Shell />} />
+    </Routes>
   )
 }

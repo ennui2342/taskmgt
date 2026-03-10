@@ -19,6 +19,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Generate image tag
+        id: tag
+        run: echo "tag=1.$(date +%Y%m%d).${{ github.run_number }}" >> $GITHUB_OUTPUT
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
         with:
@@ -42,7 +46,9 @@ jobs:
           target: base
           platforms: linux/arm64
           push: true
-          tags: ${{ env.IMAGE_PREFIX }}-api:latest
+          tags: |
+            ${{ env.IMAGE_PREFIX }}-api:latest
+            ${{ env.IMAGE_PREFIX }}-api:${{ steps.tag.outputs.tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -54,6 +60,36 @@ jobs:
           target: prod
           platforms: linux/arm64
           push: true
-          tags: ${{ env.IMAGE_PREFIX }}-frontend:latest
+          tags: |
+            ${{ env.IMAGE_PREFIX }}-frontend:latest
+            ${{ env.IMAGE_PREFIX }}-frontend:${{ steps.tag.outputs.tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Notify Discord (success)
+        if: success()
+        run: |
+          curl -s -X POST "${{ secrets.DISCORD_WEBHOOK }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "embeds": [{
+                "title": "✅ taskmgt deployed",
+                "description": "Image tag `${{ steps.tag.outputs.tag }}` pushed — Flux will reconcile shortly.",
+                "color": 3066993,
+                "footer": { "text": "github.com/ennui2342/taskmgt" }
+              }]
+            }'
+
+      - name: Notify Discord (failure)
+        if: failure()
+        run: |
+          curl -s -X POST "${{ secrets.DISCORD_WEBHOOK }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "embeds": [{
+                "title": "❌ taskmgt build failed",
+                "description": "Push to main failed — no deployment. [View logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})",
+                "color": 15158332,
+                "footer": { "text": "github.com/ennui2342/taskmgt" }
+              }]
+            }'

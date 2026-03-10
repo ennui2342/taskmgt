@@ -1,0 +1,16 @@
+{
+  "name": "aswarm Taskboard",
+  "short_name": "Tasks",
+  "start_url": "/capture",
+  "display": "standalone",
+  "background_color": "#030712",
+  "theme_color": "#4338ca",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
