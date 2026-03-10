@@ -25,7 +25,7 @@ def parse_due(raw: str) -> str | None:
         return raw + "T00:00:00+00:00"
     if "T" in raw and ("+" in raw or "Z" in raw):
         return raw
-    parsed = dateparser.parse(raw, settings={"RETURN_AS_TIMEZONE_AWARE": True, "PREFER_FUTURE_DATES": True})
+    parsed = dateparser.parse(raw, settings={"RETURN_AS_TIMEZONE_AWARE": True, "PREFER_DATES_FROM": "future"})
     if parsed:
         return parsed.astimezone(timezone.utc).isoformat()
     return raw + "T00:00:00+00:00"
