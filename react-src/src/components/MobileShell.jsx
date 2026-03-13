@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import MainPanel from './MainPanel'
@@ -11,6 +11,7 @@ export default function MobileShell() {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const location = useLocation()
   const prevPath = useRef(location.pathname + location.search)
+  const containerRef = useRef(null)
   const touchStartX = useRef(0)
   const touchStartY = useRef(0)
   const closeTask = useCloseTask()
@@ -39,25 +40,35 @@ export default function MobileShell() {
     setPane(1)
   }
 
-  function onTouchStart(e) {
+  const onTouchStart = useCallback(e => {
     touchStartX.current = e.touches[0].clientX
     touchStartY.current = e.touches[0].clientY
-  }
+  }, [])
 
-  function onTouchEnd(e) {
+  const onTouchEnd = useCallback(e => {
     const dx = e.changedTouches[0].clientX - touchStartX.current
     const dy = e.changedTouches[0].clientY - touchStartY.current
-    // Only trigger on clearly horizontal swipe-right
     if (dx > 60 && Math.abs(dx) > Math.abs(dy) * 1.5 && pane > 0) {
       setPane(p => p - 1)
     }
-  }
+  }, [pane])
+
+  // Register as passive listeners so the browser can scroll without waiting
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    el.addEventListener('touchstart', onTouchStart, { passive: true })
+    el.addEventListener('touchend', onTouchEnd, { passive: true })
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart)
+      el.removeEventListener('touchend', onTouchEnd)
+    }
+  }, [onTouchStart, onTouchEnd])
 
   return (
     <div
+      ref={containerRef}
       className="mobile-shell h-dvh overflow-hidden bg-gray-900 text-gray-100"
-      onTouchStart={onTouchStart}
-      onTouchEnd={onTouchEnd}
     >
       <div
         className="flex h-full transition-transform duration-300 ease-out"
