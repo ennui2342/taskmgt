@@ -1,3 +1,4 @@
+import base64
 import json
 import os
 import uuid
@@ -99,7 +100,14 @@ async def list_tasks(
     status: str = Query(default="open"),
     filter: str = Query(default=""),
 ):
-    where, params = parse_filter(filter) if filter.strip() else ("status='open'", [])
+    if filter.strip():
+        try:
+            decoded = base64.b64decode(filter).decode("utf-8")
+        except Exception:
+            decoded = filter  # fallback: treat as raw (aids manual curl debugging)
+        where, params = parse_filter(decoded)
+    else:
+        where, params = "status='open'", []
     rows = await db_list_tasks(status, where, params)
     return [_row_to_task(r) for r in rows]
 

@@ -86,7 +86,7 @@ function AddFilterForm({ onDone }) {
       />
       <input
         className="filter-add-filter rounded bg-gray-700 px-2 py-1 text-xs text-gray-100 outline-none ring-1 ring-gray-600 focus:ring-indigo-500"
-        placeholder="Filter  e.g. #tag !1"
+        placeholder="e.g. #tag !1  or  (&(#tag)(|(!1)(!2)))"
         value={filter}
         onChange={e => setFilter(e.target.value)}
       />

@@ -133,3 +133,73 @@ def test_filter_no_matches_returns_empty(client_with_insert):
     r = client.get("/tasks?filter=!1")
     results = r.json()
     assert results == []
+
+
+# ── Phase 3 base64 transport tests (red until Phase 3.2) ─────────────────────
+
+import base64
+
+
+def test_filter_via_base64_legacy_tag(client_with_insert):
+    client, insert = client_with_insert
+    insert("Research task #research")
+    insert("Other task")
+    encoded = base64.b64encode(b"#research").decode()
+    r = client.get(f"/tasks?filter={encoded}")
+    assert r.status_code == 200
+    results = r.json()
+    assert len(results) == 1
+    assert "research" in results[0]["tags"]
+
+
+def test_filter_via_base64_legacy_and(client_with_insert):
+    client, insert = client_with_insert
+    insert("Research high priority !1 #research")
+    insert("Research low priority #research")
+    insert("High priority no tag !1")
+    encoded = base64.b64encode(b"!1 #research").decode()
+    r = client.get(f"/tasks?filter={encoded}")
+    results = r.json()
+    assert len(results) == 1
+    assert results[0]["priority"] == 1
+    assert "research" in results[0]["tags"]
+
+
+def test_filter_via_base64_dsl_or(client_with_insert):
+    client, insert = client_with_insert
+    insert("Read task #read")
+    insert("Write task #write")
+    insert("Unrelated task")
+    encoded = base64.b64encode(b"(|(#read)(#write))").decode()
+    r = client.get(f"/tasks?filter={encoded}")
+    results = r.json()
+    assert len(results) == 2
+    tags = {t for task in results for t in task["tags"]}
+    assert "read" in tags or "write" in tags
+
+
+def test_filter_via_base64_dsl_and(client_with_insert):
+    client, insert = client_with_insert
+    insert("Read high priority #read !1")
+    insert("Read low priority #read !2")
+    insert("Write high priority #write !1")
+    encoded = base64.b64encode(b"(&(#read)(!1))").decode()
+    r = client.get(f"/tasks?filter={encoded}")
+    results = r.json()
+    assert len(results) == 1
+    assert "read" in results[0]["tags"]
+    assert results[0]["priority"] == 1
+
+
+def test_filter_via_base64_dsl_not(client_with_insert):
+    client, insert = client_with_insert
+    insert("Read task #read")
+    insert("Write task #write")
+    insert("Untagged task")
+    encoded = base64.b64encode(b"(!(#read))").decode()
+    r = client.get(f"/tasks?filter={encoded}")
+    results = r.json()
+    names = [t["name"] for t in results]
+    assert "Write task" in names
+    assert "Untagged task" in names
+    assert "Read task" not in names

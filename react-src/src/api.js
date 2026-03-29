@@ -15,7 +15,7 @@ export const api = {
     list:   (filter, closed = false) => {
       if (filter === '^closed') return req('/tasks?status=closed')
       const params = new URLSearchParams()
-      if (filter) params.set('filter', filter)
+      if (filter) params.set('filter', btoa(filter))
       if (closed) params.set('status', 'closed')
       const qs = params.toString()
       return req('/tasks' + (qs ? `?${qs}` : ''))

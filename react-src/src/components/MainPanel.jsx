@@ -34,7 +34,7 @@ export default function MainPanel({ favourite, mobile, selectedId: controlledId,
 
   const EXCLUDE_TOKENS = new Set(['^inbox', '^overdue'])
   const seed = favourite
-    ? (favFilter?.match(/[!#@^=][^\s]+|\+\+?[^\s]+/g) ?? [])
+    ? (favFilter?.match(/[!#@^=][^\s()]+|\+\+?[^\s()]+/g) ?? [])
         .filter(tok => !EXCLUDE_TOKENS.has(tok))
         .join(' ')
     : view === 'tag' && tag ? `#${tag}`

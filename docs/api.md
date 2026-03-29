@@ -120,14 +120,18 @@ List tasks, with optional filtering.
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `status` | string | `"open"` | Filter by status (`"open"` or `"closed"`) |
-| `filter` | string | `""` | SmartAdd filter expression (see [Filter Syntax](#filter-syntax)) |
+| `filter` | string | `""` | **Base64-encoded** filter expression (see [Filter Syntax](#filter-syntax)) |
 
 Tasks are returned ordered by: `priority ASC NULLS LAST`, then `created_at ASC`.
 
 **Example**
 
-```
-GET /tasks?filter=%23ops+%211
+```bash
+# High-priority ops tasks (base64 of "!1 #ops")
+GET /tasks?filter=$(echo -n '!1 #ops' | base64)
+
+# OR filter: read or write tasks (base64 of "(|(#read)(#write))")
+GET /tasks?filter=$(echo -n '(|(#read)(#write))' | base64)
 ```
 
 **Response** `200 OK` — array of [Task](#task) objects.
@@ -269,7 +273,31 @@ Summary counts for the standard views.
 
 ## Filter Syntax
 
-The `filter` query parameter on `GET /tasks` accepts a space-separated list of SmartAdd tokens. All clauses are ANDed. By default only open tasks are returned; combine with `status=closed` to filter closed tasks.
+The `filter` parameter on `GET /tasks` must be **base64-encoded**. Two filter formats are supported.
+
+### Transport encoding
+
+Always encode the filter string before sending:
+
+```bash
+# curl
+curl "http://localhost:8081/tasks?filter=$(echo -n '#ops !1' | base64)"
+
+# Python
+import base64, httpx
+httpx.get("/tasks", params={"filter": base64.b64encode(b"#ops !1").decode()})
+
+# JavaScript (browser / Node)
+fetch(`/tasks?filter=${btoa('#ops !1')}`)
+```
+
+The server falls back to treating the value as a raw (unencoded) string if base64 decoding fails, which allows direct API exploration in browser devtools.
+
+---
+
+### Legacy format (flat AND)
+
+A space-separated list of tokens, all implicitly ANDed. Only open tasks are returned by default.
 
 | Token | Matches |
 |---|---|
@@ -278,6 +306,7 @@ The `filter` query parameter on `GET /tasks` accepts a space-separated list of S
 | `!1` / `!2` / `!3` | Tasks with priority 1, 2, or 3 |
 | `+agent` | Tasks assigned to the given agent |
 | `++human` | Tasks assigned to the given human |
+| `^inbox` | Tasks with no tags |
 | `^today` | Tasks due today |
 | `^overdue` | Tasks with a past due date |
 
@@ -285,15 +314,47 @@ Unknown tokens are silently ignored.
 
 **Examples**
 
-```
+```bash
 # High-priority ops tasks
-GET /tasks?filter=!1 #ops
+curl "http://localhost:8081/tasks?filter=$(echo -n '!1 #ops' | base64)"
 
 # Alice's tasks due today
-GET /tasks?filter=++alice ^today
+curl "http://localhost:8081/tasks?filter=$(echo -n '++alice ^today' | base64)"
+```
 
-# Tasks at the office assigned to the planner agent
-GET /tasks?filter=@office +planner
+---
+
+### DSL format (Polish notation)
+
+For compound logic, use parenthesised prefix expressions. The filter is detected as DSL when the decoded string starts with `(`.
+
+**Operators**
+
+| Operator | Arity | Description |
+|---|---|---|
+| `&` | variadic | AND — all children must match |
+| `\|` | variadic | OR — at least one child must match |
+| `!` followed by `(` | 1 | NOT — child must not match |
+
+**Atoms** inside the DSL use the same token syntax as the legacy format: `(#tag)`, `(@location)`, `(!1)`, `(^today)`, etc. `(!1)` is a priority atom (digit follows `!`), not a NOT operator.
+
+**Examples**
+
+```bash
+# Tasks tagged "read" OR "write"
+curl "http://localhost:8081/tasks?filter=$(echo -n '(|(#read)(#write))' | base64)"
+
+# Tasks tagged "next" AND at location "home"
+curl "http://localhost:8081/tasks?filter=$(echo -n '(&(#next)(@home))' | base64)"
+
+# High-priority tasks tagged "next" AND (read OR write)
+curl "http://localhost:8081/tasks?filter=$(echo -n '(&(!1)(#next)(|(#read)(#write)))' | base64)"
+
+# Open tasks NOT tagged "waiting"
+curl "http://localhost:8081/tasks?filter=$(echo -n '(!(#waiting))' | base64)"
+
+# Due today OR overdue
+curl "http://localhost:8081/tasks?filter=$(echo -n '(|(^today)(^overdue))' | base64)"
 ```
 
 ---

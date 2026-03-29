@@ -25,3 +25,20 @@ docker compose up api react-app
 ```
 
 See `compose.yaml` for full service definitions.
+
+## Filter syntax
+
+Tasks can be filtered using a compact token syntax or a Polish-notation DSL for compound logic (AND/OR/NOT). The `filter` query parameter must be base64-encoded.
+
+```bash
+# Legacy: space-separated tokens (implicit AND)
+curl "http://localhost:8081/tasks?filter=$(echo -n '#ops !1' | base64)"
+
+# DSL: OR across tags
+curl "http://localhost:8081/tasks?filter=$(echo -n '(|(#read)(#write))' | base64)"
+
+# DSL: compound — next AND (read OR write)
+curl "http://localhost:8081/tasks?filter=$(echo -n '(&(#next)(|(#read)(#write)))' | base64)"
+```
+
+See [`docs/api.md`](docs/api.md#filter-syntax) for the full filter reference.
