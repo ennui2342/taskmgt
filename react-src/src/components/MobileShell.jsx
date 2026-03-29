@@ -92,7 +92,7 @@ export default function MobileShell() {
               ← Menu
             </button>
           </div>
-          <div className="flex-1 overflow-hidden">
+          <div className="flex flex-col flex-1 overflow-hidden">
             <Routes>
               <Route path="/" element={<Navigate to="/view/all" replace />} />
               <Route path="/view/:view" element={
