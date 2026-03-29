@@ -127,15 +127,17 @@ export default function MobileShell() {
             </button>
             {selected && !confirmDelete && (
               <>
-                <button
-                  onClick={async () => { await closeTask.mutateAsync(selected.id); handleDeselect() }}
-                  className="btn-close ml-auto rounded bg-indigo-700 px-3 py-1 text-xs font-medium text-white hover:bg-indigo-600"
-                >
-                  ✓ Close
-                </button>
+                {selected.status !== 'closed' && (
+                  <button
+                    onClick={async () => { await closeTask.mutateAsync(selected.id); handleDeselect() }}
+                    className="btn-close rounded bg-indigo-700 px-3 py-1 text-xs font-medium text-white hover:bg-indigo-600"
+                  >
+                    ✓ Close
+                  </button>
+                )}
                 <button
                   onClick={() => setConfirmDelete(true)}
-                  className="btn-delete rounded px-3 py-1 text-xs text-gray-400 hover:bg-red-900/50 hover:text-red-300"
+                  className="btn-delete ml-auto rounded px-3 py-1 text-xs text-gray-400 hover:bg-red-900/50 hover:text-red-300"
                 >
                   Delete
                 </button>

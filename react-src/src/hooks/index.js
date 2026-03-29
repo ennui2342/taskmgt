@@ -1,11 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, viewToFilter } from '../api'
 
-export function useTasks(view, tag, location, explicitFilter) {
+export function useTasks(view, tag, location, explicitFilter, showClosed = false) {
   const filter = explicitFilter !== undefined ? explicitFilter : viewToFilter(view, tag, location)
   return useQuery({
-    queryKey: ['tasks', filter],
-    queryFn:  () => api.tasks.list(filter),
+    queryKey: ['tasks', filter, showClosed],
+    queryFn:  () => api.tasks.list(filter, showClosed),
     refetchInterval: 3000,
   })
 }

@@ -157,6 +157,7 @@ export default function Sidebar() {
 
       <NavItem to="/view/inbox"   label="Inbox"     badge={counts.inbox}   />
       <NavItem to="/view/all"     label="All Tasks"  badge={counts.all}    />
+      <NavItem to="/view/closed" label="Closed Tasks" badge={counts.closed} />
       <NavItem to="/view/today"   label="Today"     badge={counts.today}   />
       <NavItem to="/view/overdue" label="Overdue"   badge={counts.overdue} urgent />
 

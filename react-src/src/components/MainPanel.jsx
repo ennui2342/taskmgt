@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { useTasks, useTask, useFilters } from '../hooks'
 import { viewToFilter } from '../api'
@@ -15,6 +15,9 @@ export default function MainPanel({ favourite, mobile, selectedId: controlledId,
 
   const [_selectedId, _setSelectedId] = useState(null)
   const selectedId = mobile ? controlledId : _selectedId
+  const [showClosed, setShowClosed] = useState(false)
+
+  useEffect(() => { _setSelectedId(null); setShowClosed(false) }, [view, tag, location, idx])
 
   const { data: favs = [] } = useFilters()
 
@@ -25,6 +28,7 @@ export default function MainPanel({ favourite, mobile, selectedId: controlledId,
     tag,
     location,
     favFilter,
+    showClosed,
   )
   const { data: selected } = useTask(selectedId)
 
@@ -57,9 +61,11 @@ export default function MainPanel({ favourite, mobile, selectedId: controlledId,
             selected={selected}
             activeFilter={activeFilter}
             onDeselect={() => _setSelectedId(null)}
+            showClosed={showClosed}
+            onToggleClosed={() => { setShowClosed(v => !v); _setSelectedId(null) }}
           />
         )}
-        <SmartAddBar seed={seed} />
+        {view !== 'closed' && !showClosed && <SmartAddBar seed={seed} />}
         <TaskList
           tasks={tasks}
           selectedId={selectedId}

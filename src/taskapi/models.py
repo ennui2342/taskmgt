@@ -52,6 +52,7 @@ class Counts(BaseModel):
     inbox: int
     today: int
     overdue: int
+    closed: int
 
 
 class FilterItem(BaseModel):

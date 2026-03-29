@@ -111,9 +111,9 @@ async def db_delete_task(task_id: str) -> bool:
 
 async def db_tags() -> list[dict]:
     sql = (
-        "SELECT json_each.value AS tag, COUNT(*) AS count "
+        "SELECT json_each.value AS tag, "
+        "SUM(CASE WHEN status='open' THEN 1 ELSE 0 END) AS count "
         "FROM tasks, json_each(tags) "
-        "WHERE status='open' "
         "GROUP BY json_each.value ORDER BY json_each.value"
     )
     db = await _get_db()
@@ -124,8 +124,10 @@ async def db_tags() -> list[dict]:
 
 async def db_locations() -> list[dict]:
     sql = (
-        "SELECT location, COUNT(*) AS count FROM tasks "
-        "WHERE status='open' AND location IS NOT NULL "
+        "SELECT location, "
+        "SUM(CASE WHEN status='open' THEN 1 ELSE 0 END) AS count "
+        "FROM tasks "
+        "WHERE location IS NOT NULL "
         "GROUP BY location ORDER BY location"
     )
     db = await _get_db()
@@ -166,4 +168,5 @@ async def db_counts() -> dict:
             "SELECT count(*) FROM tasks WHERE status='open' AND due IS NOT NULL AND due < ?",
             (today_start,),
         ),
+        "closed": await count("SELECT count(*) FROM tasks WHERE status='closed'"),
     }

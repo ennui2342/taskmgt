@@ -12,7 +12,14 @@ const json = body => ({
 
 export const api = {
   tasks: {
-    list:   (filter) => req('/tasks' + (filter ? `?filter=${encodeURIComponent(filter)}` : '')),
+    list:   (filter, closed = false) => {
+      if (filter === '^closed') return req('/tasks?status=closed')
+      const params = new URLSearchParams()
+      if (filter) params.set('filter', filter)
+      if (closed) params.set('status', 'closed')
+      const qs = params.toString()
+      return req('/tasks' + (qs ? `?${qs}` : ''))
+    },
     get:    (id)     => req(`/tasks/${id}`),
     create: (text)   => req('/tasks', { method: 'POST', ...json({ text }) }),
     update: (id, text) => req(`/tasks/${id}`, { method: 'PATCH', ...json({ text }) }),
@@ -35,6 +42,7 @@ export function viewToFilter(view, tag, location) {
     case 'inbox':    return '^inbox'
     case 'today':    return '^today'
     case 'overdue':  return '^overdue'
+    case 'closed':   return '^closed'
     case 'tag':      return tag      ? `#${tag}`       : ''
     case 'location': return location ? `@${location}`  : ''
     default:         return ''
