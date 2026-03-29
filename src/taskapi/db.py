@@ -6,6 +6,7 @@ from typing import Any
 import aiosqlite
 
 _conn: aiosqlite.Connection | None = None
+_conn_path: str | None = None
 
 
 def _db_path() -> str:
@@ -25,22 +26,33 @@ def _today_bounds() -> tuple[str, str]:
     return start, end
 
 
-def _db() -> aiosqlite.Connection:
-    assert _conn is not None, "Database not initialised"
+async def _get_db() -> aiosqlite.Connection:
+    """Return the persistent connection, creating it if needed.
+
+    Path-aware: if DATABASE_PATH changes (as it does between test runs)
+    the old connection is closed and a fresh one opened.
+    """
+    global _conn, _conn_path
+    current_path = _db_path()
+    if _conn is None or _conn_path != current_path:
+        if _conn is not None:
+            await _conn.close()
+        _conn = await aiosqlite.connect(current_path)
+        _conn.row_factory = aiosqlite.Row
+        _conn_path = current_path
     return _conn
 
 
 async def init_db() -> None:
-    global _conn
-    _conn = await aiosqlite.connect(_db_path())
-    _conn.row_factory = aiosqlite.Row
+    await _get_db()
 
 
 async def close_db() -> None:
-    global _conn
-    if _conn:
+    global _conn, _conn_path
+    if _conn is not None:
         await _conn.close()
         _conn = None
+        _conn_path = None
 
 
 _ORDER = "ORDER BY priority IS NULL, priority, created_at"
@@ -52,19 +64,22 @@ async def db_list_tasks(status: str, where: str, params: list) -> list[dict]:
     elif status == "all":
         where = where.replace("status='open' AND ", "").replace("status='open'", "1=1")
 
-    async with _db().execute(f"SELECT * FROM tasks WHERE {where} {_ORDER}", params) as cur:
+    db = await _get_db()
+    async with db.execute(f"SELECT * FROM tasks WHERE {where} {_ORDER}", params) as cur:
         rows = await cur.fetchall()
     return [_row_to_dict(r) for r in rows]
 
 
 async def db_get_task(task_id: str) -> dict | None:
-    async with _db().execute("SELECT * FROM tasks WHERE id=?", (task_id,)) as cur:
+    db = await _get_db()
+    async with db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)) as cur:
         row = await cur.fetchone()
     return _row_to_dict(row) if row else None
 
 
 async def db_create_task(row: dict) -> dict:
-    await _db().execute(
+    db = await _get_db()
+    await db.execute(
         "INSERT INTO tasks VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         [row[k] for k in (
             "id", "text", "status", "due", "priority", "duration", "tags",
@@ -72,24 +87,26 @@ async def db_create_task(row: dict) -> dict:
             "source_pipeline", "source_agent", "created_at", "completed_at",
         )],
     )
-    await _db().commit()
+    await db.commit()
     return row
 
 
 async def db_update_task(task_id: str, fields: dict) -> bool:
     if not fields:
         return True
+    db = await _get_db()
     sets = ", ".join(f"{k}=?" for k in fields)
     vals = list(fields.values()) + [task_id]
-    await _db().execute(f"UPDATE tasks SET {sets} WHERE id=?", vals)
-    await _db().commit()
-    return _db().total_changes > 0
+    await db.execute(f"UPDATE tasks SET {sets} WHERE id=?", vals)
+    await db.commit()
+    return db.total_changes > 0
 
 
 async def db_delete_task(task_id: str) -> bool:
-    await _db().execute("DELETE FROM tasks WHERE id=?", (task_id,))
-    await _db().commit()
-    return _db().total_changes > 0
+    db = await _get_db()
+    await db.execute("DELETE FROM tasks WHERE id=?", (task_id,))
+    await db.commit()
+    return db.total_changes > 0
 
 
 async def db_tags() -> list[dict]:
@@ -99,7 +116,8 @@ async def db_tags() -> list[dict]:
         "WHERE status='open' "
         "GROUP BY json_each.value ORDER BY json_each.value"
     )
-    async with _db().execute(sql) as cur:
+    db = await _get_db()
+    async with db.execute(sql) as cur:
         rows = await cur.fetchall()
     return [{"tag": r[0], "count": r[1]} for r in rows]
 
@@ -110,7 +128,8 @@ async def db_locations() -> list[dict]:
         "WHERE status='open' AND location IS NOT NULL "
         "GROUP BY location ORDER BY location"
     )
-    async with _db().execute(sql) as cur:
+    db = await _get_db()
+    async with db.execute(sql) as cur:
         rows = await cur.fetchall()
     return [{"location": r[0], "count": r[1]} for r in rows]
 
@@ -121,14 +140,15 @@ async def db_pipelines() -> list[dict]:
         "WHERE status='open' AND source_pipeline IS NOT NULL "
         "GROUP BY source_pipeline ORDER BY source_pipeline"
     )
-    async with _db().execute(sql) as cur:
+    db = await _get_db()
+    async with db.execute(sql) as cur:
         rows = await cur.fetchall()
     return [{"pipeline": r[0], "count": r[1]} for r in rows]
 
 
 async def db_counts() -> dict:
     today_start, today_end = _today_bounds()
-    db = _db()
+    db = await _get_db()
 
     async def count(sql: str, params: tuple = ()) -> int:
         async with db.execute(sql, params) as cur:
