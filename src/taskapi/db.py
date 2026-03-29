@@ -169,4 +169,12 @@ async def db_counts() -> dict:
             (today_start,),
         ),
         "closed": await count("SELECT count(*) FROM tasks WHERE status='closed'"),
+        "wait": await count(
+            "SELECT count(*) FROM tasks, json_each(tags) "
+            "WHERE status='open' AND json_each.value='wait'"
+        ),
+        "started": await count(
+            "SELECT count(*) FROM tasks, json_each(tags) "
+            "WHERE status='open' AND json_each.value='started'"
+        ),
     }

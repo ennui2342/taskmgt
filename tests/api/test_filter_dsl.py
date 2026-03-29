@@ -145,3 +145,23 @@ def test_legacy_special_inbox():
 def test_legacy_special_today():
     where, params = parse_filter("^today")
     assert "due BETWEEN ? AND ?" in where
+
+
+def test_legacy_special_wait():
+    where, params = parse_filter("^wait")
+    assert "json_each.value='wait'" in where
+
+
+def test_legacy_special_started():
+    where, params = parse_filter("^started")
+    assert "json_each.value='started'" in where
+
+
+def test_dsl_special_atom_wait():
+    where, params = parse_filter("(^wait)")
+    assert "json_each.value='wait'" in where
+
+
+def test_dsl_special_atom_started():
+    where, params = parse_filter("(^started)")
+    assert "json_each.value='started'" in where

@@ -45,6 +45,8 @@ export function viewToFilter(view, tag, location) {
     case 'closed':   return '^closed'
     case 'tag':      return tag      ? `#${tag}`       : ''
     case 'location': return location ? `@${location}`  : ''
+    case 'wait':     return '^wait'
+    case 'started':  return '^started'
     default:         return ''
   }
 }

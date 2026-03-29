@@ -159,7 +159,9 @@ export default function Sidebar() {
       <NavItem to="/view/all"     label="All Tasks"  badge={counts.all}    />
       <NavItem to="/view/closed" label="Closed Tasks" badge={counts.closed} />
       <NavItem to="/view/today"   label="Today"     badge={counts.today}   />
-      <NavItem to="/view/overdue" label="Overdue"   badge={counts.overdue} urgent />
+      <NavItem to="/view/overdue"  label="Overdue"  badge={counts.overdue}  urgent />
+      <NavItem to="/view/wait"    label="Waiting"  badge={counts.wait}            />
+      <NavItem to="/view/started" label="Started"  badge={counts.started}         />
 
       <SectionHeading label="Filters" onAdd={() => setAddingFilter(true)} />
       {addingFilter && <AddFilterForm onDone={() => setAddingFilter(false)} />}

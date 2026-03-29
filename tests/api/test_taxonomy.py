@@ -108,6 +108,8 @@ def test_counts_has_all_required_keys(client_with_insert):
     assert "inbox" in data
     assert "today" in data
     assert "overdue" in data
+    assert "wait" in data
+    assert "started" in data
 
 
 def test_counts_inbox_equals_open_tasks_with_no_tags(client_with_insert):
@@ -148,3 +150,20 @@ def test_counts_overdue(client_with_insert):
     insert("No due task")
     r = client.get("/counts")
     assert r.json()["overdue"] == 1
+
+
+def test_counts_wait(client_with_insert):
+    client, insert = client_with_insert
+    insert("Waiting for approval #wait")
+    insert("Also waiting #wait")
+    insert("Not waiting #read")
+    r = client.get("/counts")
+    assert r.json()["wait"] == 2
+
+
+def test_counts_started(client_with_insert):
+    client, insert = client_with_insert
+    insert("In progress task #started")
+    insert("Not started yet")
+    r = client.get("/counts")
+    assert r.json()["started"] == 1

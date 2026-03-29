@@ -103,4 +103,8 @@ def _compile_atom(token: str) -> tuple[str, list]:
         return "due BETWEEN ? AND ?", [today_start, today_end]
     if token == "^overdue":
         return "due IS NOT NULL AND due < ?", [today_start]
+    if token == "^wait":
+        return "id IN (SELECT t.id FROM tasks t, json_each(t.tags) WHERE json_each.value='wait')", []
+    if token == "^started":
+        return "id IN (SELECT t.id FROM tasks t, json_each(t.tags) WHERE json_each.value='started')", []
     return "", []
