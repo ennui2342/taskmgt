@@ -192,7 +192,7 @@ Permanently delete a task.
 
 ### GET /tags
 
-List all tags used by open tasks, with task counts.
+List all tags across all tasks, with open-task counts. Tags that only appear on closed tasks are included with a count of `0`.
 
 **Response** `200 OK`
 
@@ -209,7 +209,7 @@ Ordered alphabetically by tag name.
 
 ### GET /locations
 
-List all locations used by open tasks, with task counts.
+List all locations across all tasks, with open-task counts. Locations that only appear on closed tasks are included with a count of `0`.
 
 **Response** `200 OK`
 
@@ -252,7 +252,8 @@ Summary counts for the standard views.
   "all": 153,
   "inbox": 12,
   "today": 4,
-  "overdue": 2
+  "overdue": 2,
+  "closed": 47
 }
 ```
 
@@ -262,12 +263,13 @@ Summary counts for the standard views.
 | `inbox` | Open tasks with no tags (`tags = []`) |
 | `today` | Open tasks with `due` falling today (UTC) |
 | `overdue` | Open tasks with `due` in the past |
+| `closed` | All closed tasks |
 
 ---
 
 ## Filter Syntax
 
-The `filter` query parameter on `GET /tasks` accepts a space-separated list of SmartAdd tokens. All clauses are ANDed. Only open tasks are returned regardless of filter.
+The `filter` query parameter on `GET /tasks` accepts a space-separated list of SmartAdd tokens. All clauses are ANDed. By default only open tasks are returned; combine with `status=closed` to filter closed tasks.
 
 | Token | Matches |
 |---|---|
