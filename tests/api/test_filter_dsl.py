@@ -48,7 +48,7 @@ def test_dsl_or_wrapped_in_parens():
     """OR block must be parenthesised to avoid polluting the outer AND chain."""
     where, params = parse_filter("(|(#next)(#read))")
     # Strip the always-present status clause to inspect just the DSL part
-    dsl_part = where.replace("status='open'", "").strip(" AND").strip()
+    dsl_part = where.replace("status!='closed'", "").strip(" AND").strip()
     assert dsl_part.startswith("(") and dsl_part.endswith(")")
 
 
@@ -149,19 +149,19 @@ def test_legacy_special_today():
 
 def test_legacy_special_wait():
     where, params = parse_filter("^wait")
-    assert "json_each.value='wait'" in where
+    assert "status='wait'" in where
 
 
 def test_legacy_special_started():
     where, params = parse_filter("^started")
-    assert "json_each.value='started'" in where
+    assert "status='started'" in where
 
 
 def test_dsl_special_atom_wait():
     where, params = parse_filter("(^wait)")
-    assert "json_each.value='wait'" in where
+    assert "status='wait'" in where
 
 
 def test_dsl_special_atom_started():
     where, params = parse_filter("(^started)")
-    assert "json_each.value='started'" in where
+    assert "status='started'" in where

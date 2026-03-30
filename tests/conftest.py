@@ -132,7 +132,9 @@ def server_url(_servers):
 def insert_task(_servers):
     _, api_url = _servers
 
-    def _insert(text: str):
+    def _insert(text: str, status: str | None = None):
+        if status and status != "open":
+            text = f"{text} §{status}"
         with httpx.Client(base_url=api_url) as c:
             resp = c.post("/tasks", json={"text": text})
             resp.raise_for_status()

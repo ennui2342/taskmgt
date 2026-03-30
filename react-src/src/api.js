@@ -53,7 +53,7 @@ export function viewToFilter(view, tag, location) {
 
 export function stripTokens(text) {
   const firstLine = (text ?? '').split('\n')[0]
-  return firstLine.replace(/\s*([!#@^=][^\s]+|\+\+?[^\s]+|<[^\s]+)/g, '').trim()
+  return firstLine.replace(/\s*([!#@^=§>][^\s]+|\+\+?[^\s]+|<[^\s]+)/g, '').trim()
 }
 
 // Lines after the first that start with "* " are annotation/note lines.

@@ -4,14 +4,14 @@ from datetime import datetime, timezone
 def parse_filter(s: str) -> tuple[str, list]:
     if s.startswith("("):
         where, params = _parse_dsl(s)
-        return f"status='open' AND ({where})", params
+        return f"status!='closed' AND ({where})", params
     return _parse_legacy(s)
 
 
 # ── Legacy (flat AND) parser ──────────────────────────────────────────────────
 
 def _parse_legacy(s: str) -> tuple[str, list]:
-    clauses = ["status='open'"]
+    clauses = ["status!='closed'"]
     params: list = []
     for token in s.split():
         clause, token_params = _compile_atom(token)
@@ -104,7 +104,7 @@ def _compile_atom(token: str) -> tuple[str, list]:
     if token == "^overdue":
         return "due IS NOT NULL AND due < ?", [today_start]
     if token == "^wait":
-        return "id IN (SELECT t.id FROM tasks t, json_each(t.tags) WHERE json_each.value='wait')", []
+        return "status='wait'", []
     if token == "^started":
-        return "id IN (SELECT t.id FROM tasks t, json_each(t.tags) WHERE json_each.value='started')", []
+        return "status='started'", []
     return "", []

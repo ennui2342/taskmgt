@@ -17,7 +17,7 @@ Interactive docs (Swagger UI): `http://localhost:8081/docs`
 | `id` | string (UUID) | Unique task identifier |
 | `text` | string | Raw task text including SmartAdd tokens and annotation lines |
 | `name` | string | Display name — first line of `text` with all tokens stripped |
-| `status` | string | `"open"` or `"closed"` |
+| `status` | string | `"open"`, `"wait"`, `"started"`, or `"closed"` |
 | `due` | string \| null | ISO 8601 datetime (UTC) |
 | `priority` | int \| null | `1` = High, `2` = Medium, `3` = Low, `null` = none |
 | `duration` | string \| null | Duration string e.g. `"30m"`, `"2h"` |
@@ -36,6 +36,8 @@ Interactive docs (Swagger UI): `http://localhost:8081/docs`
 
 Tasks are created and updated using **SmartAdd text** — a natural-language string with embedded tokens. All tokens apply only to the first line of the text; subsequent lines are annotation lines (see below).
 
+The task text is the **source of truth**: all indexed DB fields are derived from tokens in the text. The API also injects provenance tokens into the text automatically (see [Provenance Tokens](#provenance-tokens)).
+
 ### Tokens
 
 | Token | Field | Example |
@@ -47,9 +49,23 @@ Tasks are created and updated using **SmartAdd text** — a natural-language str
 | `=duration` | duration | `Write report =2h` |
 | `+agent` | assignee_agent | `Review PR +carbon13` |
 | `++human` | assignee_human | `Review PR ++alice` |
-| `<pipeline.agent` | source provenance | `Task from CI <ci.builder` |
+| `§status` | task status | `Blocked §wait` |
+| `<pipeline.agent:timestamp` | creation provenance | `Task from CI <ci.builder:2026-03-30T14:00:00Z` |
+| `>actor:timestamp` | completion provenance | `Done >:2026-03-30T15:00:00Z` |
 
 **Due date** accepts ISO dates (`2026-04-15`), ISO datetimes, or natural language understood by [dateparser](https://dateparser.readthedocs.io/) (`tomorrow`, `next friday`, `in 3 days`).
+
+**Status values**: `open` (default), `wait` (blocked/waiting), `started` (in progress), `closed`.
+
+### Provenance Tokens
+
+The API automatically injects and updates provenance tokens in task text:
+
+- **On create**: `<:timestamp` is appended to the first line (or `<actor:timestamp` if `<actor` is already present in the text). The timestamp uses the `Z` UTC suffix to avoid token ambiguity.
+- **On close** (`PATCH status=closed`): `§closed` replaces any existing `§status` token (or is appended), and `>:timestamp` replaces any existing completion token (or is appended).
+- **On status change** (to `open`, `wait`, or `started`): the `§status` token is replaced. `>:timestamp` is removed when reopening.
+
+This means the text is always a self-contained record of the task's lifecycle.
 
 ### Annotations
 
@@ -87,12 +103,14 @@ Create a new task.
 | `source_pipeline` | string \| null | no | Override source_pipeline (also parseable from `<pipeline.agent` token in text) |
 | `source_agent` | string \| null | no | Override source_agent |
 
+The API injects `<:timestamp` into the stored text (or timestamps an existing `<actor` token). The initial status is derived from any `§status` token, defaulting to `"open"`.
+
 **Response** `201 Created`
 
 ```json
 {
   "id": "a1b2c3d4-...",
-  "text": "Deploy release !1 #ops ^tomorrow",
+  "text": "Deploy release !1 #ops ^tomorrow <:2026-03-30T14:00:00Z",
   "name": "Deploy release",
   "status": "open",
   "due": "2026-03-09T00:00:00+00:00",
@@ -104,7 +122,7 @@ Create a new task.
   "assignee_human": null,
   "source_pipeline": "ci",
   "source_agent": "builder",
-  "created_at": "2026-03-08T14:00:00+00:00",
+  "created_at": "2026-03-30T14:00:00+00:00",
   "completed_at": null
 }
 ```
@@ -119,8 +137,10 @@ List tasks, with optional filtering.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `status` | string | `"open"` | Filter by status (`"open"` or `"closed"`) |
+| `status` | string | `"open"` | Override status scope: `"open"` (non-closed), `"closed"`, or `"all"` |
 | `filter` | string | `""` | **Base64-encoded** filter expression (see [Filter Syntax](#filter-syntax)) |
+
+By default (no `filter`, no `status`), returns all tasks where `status != 'closed'` — i.e. `open`, `wait`, and `started` tasks. Pass `?status=closed` to list closed tasks; `?status=all` to return everything.
 
 Tasks are returned ordered by: `priority ASC NULLS LAST`, then `created_at ASC`.
 
@@ -132,6 +152,9 @@ GET /tasks?filter=$(echo -n '!1 #ops' | base64)
 
 # OR filter: read or write tasks (base64 of "(|(#read)(#write))")
 GET /tasks?filter=$(echo -n '(|(#read)(#write))' | base64)
+
+# Closed tasks only
+GET /tasks?status=closed
 ```
 
 **Response** `200 OK` — array of [Task](#task) objects.
@@ -167,8 +190,8 @@ Update a task. Only provided fields are changed. Omitted fields are left unchang
 
 | Field | Type | Description |
 |---|---|---|
-| `text` | string \| null | New SmartAdd text. All derived fields (`priority`, `tags`, `due`, etc.) are re-parsed from the new text. If no `<` token is present, `source_pipeline` and `source_agent` are preserved from the existing task. |
-| `status` | string \| null | `"open"` or `"closed"`. Setting to `"closed"` sets `completed_at` to now; setting to `"open"` clears it. |
+| `text` | string \| null | New SmartAdd text. All derived fields (`priority`, `tags`, `due`, etc.) are re-parsed. If no `<` token is present, `source_pipeline` and `source_agent` are preserved. |
+| `status` | string \| null | `"open"`, `"wait"`, `"started"`, or `"closed"`. The API updates `§status` and `>:timestamp` tokens in the stored text accordingly. Setting to `"closed"` sets `completed_at` to now; `"open"` clears it. |
 
 **Response** `200 OK` — updated [Task](#task) object.
 
@@ -196,7 +219,7 @@ Permanently delete a task.
 
 ### GET /tags
 
-List all tags across all tasks, with open-task counts. Tags that only appear on closed tasks are included with a count of `0`.
+List all tags across non-closed tasks, with counts.
 
 **Response** `200 OK`
 
@@ -213,7 +236,7 @@ Ordered alphabetically by tag name.
 
 ### GET /locations
 
-List all locations across all tasks, with open-task counts. Locations that only appear on closed tasks are included with a count of `0`.
+List all locations across non-closed tasks, with counts.
 
 **Response** `200 OK`
 
@@ -230,7 +253,7 @@ Ordered alphabetically by location name.
 
 ### GET /pipelines
 
-List all source pipelines represented in open tasks, with task counts.
+List all source pipelines across non-closed tasks, with task counts.
 
 **Response** `200 OK`
 
@@ -257,16 +280,20 @@ Summary counts for the standard views.
   "inbox": 12,
   "today": 4,
   "overdue": 2,
+  "wait": 7,
+  "started": 3,
   "closed": 47
 }
 ```
 
 | Field | Description |
 |---|---|
-| `all` | All open tasks |
-| `inbox` | Open tasks with no tags (`tags = []`) |
-| `today` | Open tasks with `due` falling today (UTC) |
-| `overdue` | Open tasks with `due` in the past |
+| `all` | All non-closed tasks (`status != 'closed'`) |
+| `inbox` | Non-closed tasks with no tags (`tags = []`) |
+| `today` | Non-closed tasks with `due` falling today (UTC) |
+| `overdue` | Non-closed tasks with `due` in the past |
+| `wait` | Tasks with `status = 'wait'` |
+| `started` | Tasks with `status = 'started'` |
 | `closed` | All closed tasks |
 
 ---
@@ -297,7 +324,7 @@ The server falls back to treating the value as a raw (unencoded) string if base6
 
 ### Legacy format (flat AND)
 
-A space-separated list of tokens, all implicitly ANDed. Only open tasks are returned by default.
+A space-separated list of tokens, all implicitly ANDed. Returns non-closed tasks by default.
 
 | Token | Matches |
 |---|---|
@@ -309,6 +336,8 @@ A space-separated list of tokens, all implicitly ANDed. Only open tasks are retu
 | `^inbox` | Tasks with no tags |
 | `^today` | Tasks due today |
 | `^overdue` | Tasks with a past due date |
+| `^wait` | Tasks with `status = 'wait'` |
+| `^started` | Tasks with `status = 'started'` |
 
 Unknown tokens are silently ignored.
 
@@ -320,6 +349,9 @@ curl "http://localhost:8081/tasks?filter=$(echo -n '!1 #ops' | base64)"
 
 # Alice's tasks due today
 curl "http://localhost:8081/tasks?filter=$(echo -n '++alice ^today' | base64)"
+
+# All waiting tasks
+curl "http://localhost:8081/tasks?filter=$(echo -n '^wait' | base64)"
 ```
 
 ---
@@ -336,7 +368,7 @@ For compound logic, use parenthesised prefix expressions. The filter is detected
 | `\|` | variadic | OR — at least one child must match |
 | `!` followed by `(` | 1 | NOT — child must not match |
 
-**Atoms** inside the DSL use the same token syntax as the legacy format: `(#tag)`, `(@location)`, `(!1)`, `(^today)`, etc. `(!1)` is a priority atom (digit follows `!`), not a NOT operator.
+**Atoms** inside the DSL use the same token syntax as the legacy format: `(#tag)`, `(@location)`, `(!1)`, `(^today)`, `(^wait)`, `(^started)`, etc. `(!1)` is a priority atom (digit follows `!`), not a NOT operator.
 
 **Examples**
 
@@ -350,11 +382,14 @@ curl "http://localhost:8081/tasks?filter=$(echo -n '(&(#next)(@home))' | base64)
 # High-priority tasks tagged "next" AND (read OR write)
 curl "http://localhost:8081/tasks?filter=$(echo -n '(&(!1)(#next)(|(#read)(#write)))' | base64)"
 
-# Open tasks NOT tagged "waiting"
+# Non-closed tasks NOT tagged "waiting"
 curl "http://localhost:8081/tasks?filter=$(echo -n '(!(#waiting))' | base64)"
 
 # Due today OR overdue
 curl "http://localhost:8081/tasks?filter=$(echo -n '(|(^today)(^overdue))' | base64)"
+
+# Waiting OR started tasks
+curl "http://localhost:8081/tasks?filter=$(echo -n '(|(^wait)(^started))' | base64)"
 ```
 
 ---

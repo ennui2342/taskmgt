@@ -60,9 +60,9 @@ _ORDER = "ORDER BY priority IS NULL, priority, created_at"
 
 async def db_list_tasks(status: str, where: str, params: list) -> list[dict]:
     if status == "closed":
-        where = where.replace("status='open'", "status='closed'")
+        where = where.replace("status!='closed'", "status='closed'")
     elif status == "all":
-        where = where.replace("status='open' AND ", "").replace("status='open'", "1=1")
+        where = where.replace("status!='closed' AND ", "").replace("status!='closed'", "1=1")
 
     db = await _get_db()
     async with db.execute(f"SELECT * FROM tasks WHERE {where} {_ORDER}", params) as cur:
@@ -112,7 +112,7 @@ async def db_delete_task(task_id: str) -> bool:
 async def db_tags() -> list[dict]:
     sql = (
         "SELECT json_each.value AS tag, "
-        "SUM(CASE WHEN status='open' THEN 1 ELSE 0 END) AS count "
+        "SUM(CASE WHEN status!='closed' THEN 1 ELSE 0 END) AS count "
         "FROM tasks, json_each(tags) "
         "GROUP BY json_each.value ORDER BY json_each.value"
     )
@@ -125,7 +125,7 @@ async def db_tags() -> list[dict]:
 async def db_locations() -> list[dict]:
     sql = (
         "SELECT location, "
-        "SUM(CASE WHEN status='open' THEN 1 ELSE 0 END) AS count "
+        "SUM(CASE WHEN status!='closed' THEN 1 ELSE 0 END) AS count "
         "FROM tasks "
         "WHERE location IS NOT NULL "
         "GROUP BY location ORDER BY location"
@@ -139,7 +139,7 @@ async def db_locations() -> list[dict]:
 async def db_pipelines() -> list[dict]:
     sql = (
         "SELECT source_pipeline, COUNT(*) AS count FROM tasks "
-        "WHERE status='open' AND source_pipeline IS NOT NULL "
+        "WHERE status!='closed' AND source_pipeline IS NOT NULL "
         "GROUP BY source_pipeline ORDER BY source_pipeline"
     )
     db = await _get_db()
@@ -158,23 +158,17 @@ async def db_counts() -> dict:
             return row[0] if row else 0
 
     return {
-        "all": await count("SELECT count(*) FROM tasks WHERE status='open'"),
-        "inbox": await count("SELECT count(*) FROM tasks WHERE status='open' AND tags='[]'"),
+        "all": await count("SELECT count(*) FROM tasks WHERE status!='closed'"),
+        "inbox": await count("SELECT count(*) FROM tasks WHERE status!='closed' AND tags='[]'"),
         "today": await count(
-            "SELECT count(*) FROM tasks WHERE status='open' AND due BETWEEN ? AND ?",
+            "SELECT count(*) FROM tasks WHERE status!='closed' AND due BETWEEN ? AND ?",
             (today_start, today_end),
         ),
         "overdue": await count(
-            "SELECT count(*) FROM tasks WHERE status='open' AND due IS NOT NULL AND due < ?",
+            "SELECT count(*) FROM tasks WHERE status!='closed' AND due IS NOT NULL AND due < ?",
             (today_start,),
         ),
         "closed": await count("SELECT count(*) FROM tasks WHERE status='closed'"),
-        "wait": await count(
-            "SELECT count(*) FROM tasks, json_each(tags) "
-            "WHERE status='open' AND json_each.value='wait'"
-        ),
-        "started": await count(
-            "SELECT count(*) FROM tasks, json_each(tags) "
-            "WHERE status='open' AND json_each.value='started'"
-        ),
+        "wait": await count("SELECT count(*) FROM tasks WHERE status='wait'"),
+        "started": await count("SELECT count(*) FROM tasks WHERE status='started'"),
     }

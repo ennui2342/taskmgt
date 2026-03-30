@@ -27,3 +27,26 @@ Feature: Left nav navigation
     When I visit the All Tasks view
     And I click the "#research" tag in the nav
     Then I see "Research something" in the task list
+
+  Scenario: Waiting view shows only wait-status tasks
+    Given the task store has a wait task "Blocked on approval"
+    And the task store has an open task "Regular task"
+    When I visit the Waiting view
+    Then I see "Blocked on approval" in the task list
+    But I do not see "Regular task" in the task list
+
+  Scenario: Started view shows only started-status tasks
+    Given the task store has a started task "Work in progress"
+    And the task store has an open task "Not started yet"
+    When I visit the Started view
+    Then I see "Work in progress" in the task list
+    But I do not see "Not started yet" in the task list
+
+  Scenario: All Tasks includes wait and started tasks
+    Given the task store has an open task "Open task"
+    And the task store has a wait task "Waiting task"
+    And the task store has a started task "Started task"
+    When I visit the All Tasks view
+    Then I see "Open task" in the task list
+    And I see "Waiting task" in the task list
+    And I see "Started task" in the task list

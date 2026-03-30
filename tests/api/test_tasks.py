@@ -109,15 +109,31 @@ def test_get_404_for_missing(client_with_insert):
 
 # ── GET /tasks ────────────────────────────────────────────────────────────────
 
-def test_list_returns_open_by_default(client_with_insert):
+def test_list_excludes_closed_by_default(client_with_insert):
     client, insert = client_with_insert
     insert("Open task")
     insert("Closed task", status="closed", completed_at="2024-01-01T00:00:00+00:00")
     r = client.get("/tasks")
     assert r.status_code == 200
     statuses = [t["status"] for t in r.json()]
-    assert all(s == "open" for s in statuses)
+    assert "closed" not in statuses
     assert len(statuses) == 1
+
+
+def test_list_default_includes_wait_status(client_with_insert):
+    client, insert = client_with_insert
+    insert("Waiting task", status="wait")
+    r = client.get("/tasks")
+    assert len(r.json()) == 1
+    assert r.json()[0]["status"] == "wait"
+
+
+def test_list_default_includes_started_status(client_with_insert):
+    client, insert = client_with_insert
+    insert("Started task", status="started")
+    r = client.get("/tasks")
+    assert len(r.json()) == 1
+    assert r.json()[0]["status"] == "started"
 
 
 def test_list_status_all_includes_closed(client_with_insert):
@@ -219,6 +235,46 @@ def test_update_text_and_status_combined(client_with_insert):
     assert data["completed_at"] is not None
 
 
+# ── §status token on create/patch ─────────────────────────────────────────────
+
+def test_create_with_status_wait_from_token(client_with_insert):
+    client, _ = client_with_insert
+    r = client.post("/tasks", json={"text": "Blocked task §wait"})
+    assert r.status_code == 201
+    assert r.json()["status"] == "wait"
+
+
+def test_create_with_status_started_from_token(client_with_insert):
+    client, _ = client_with_insert
+    r = client.post("/tasks", json={"text": "In flight §started"})
+    assert r.status_code == 201
+    assert r.json()["status"] == "started"
+
+
+def test_create_name_strips_status_token(client_with_insert):
+    client, _ = client_with_insert
+    r = client.post("/tasks", json={"text": "Buy milk §wait !1"})
+    assert r.json()["name"] == "Buy milk"
+
+
+def test_patch_status_to_wait(client_with_insert):
+    client, insert = client_with_insert
+    task_id = insert("Some task")
+    r = client.patch(f"/tasks/{task_id}", json={"status": "wait"})
+    assert r.status_code == 200
+    assert r.json()["status"] == "wait"
+    assert r.json()["completed_at"] is None
+
+
+def test_patch_status_to_started(client_with_insert):
+    client, insert = client_with_insert
+    task_id = insert("Some task")
+    r = client.patch(f"/tasks/{task_id}", json={"status": "started"})
+    assert r.status_code == 200
+    assert r.json()["status"] == "started"
+    assert r.json()["completed_at"] is None
+
+
 # ── DELETE /tasks/{id} ────────────────────────────────────────────────────────
 
 def test_delete_returns_204(client_with_insert):
@@ -240,3 +296,73 @@ def test_delete_404_for_missing(client_with_insert):
     client, _ = client_with_insert
     r = client.delete("/tasks/nonexistent-id")
     assert r.status_code == 404
+
+
+# ── Text mutation (provenance tokens) ────────────────────────────────────────
+
+def test_create_injects_source_timestamp(client_with_insert):
+    """POST /tasks injects <:timestamp into task text."""
+    client, _ = client_with_insert
+    r = client.post("/tasks", json={"text": "Buy milk"})
+    assert r.status_code == 201
+    assert "<:" in r.json()["text"]
+
+
+def test_create_preserves_existing_source_token(client_with_insert):
+    """If text already has a <pipeline.agent token, it is kept and timestamp appended."""
+    client, _ = client_with_insert
+    r = client.post("/tasks", json={"text": "Imported task <rtm.import"})
+    text = r.json()["text"]
+    assert text.startswith("Imported task")
+    assert "<rtm.import:" in text
+
+
+def test_create_source_token_has_iso_timestamp(client_with_insert):
+    client, _ = client_with_insert
+    r = client.post("/tasks", json={"text": "Buy milk"})
+    text = r.json()["text"]
+    # extract the timestamp after <:
+    import re
+    m = re.search(r"<[^:]*:(\S+)", text)
+    assert m is not None
+    ts = m.group(1)
+    from datetime import datetime
+    datetime.fromisoformat(ts)  # must be valid ISO
+
+
+def test_close_injects_closed_status_token(client_with_insert):
+    """PATCH status=closed writes §closed into task text."""
+    client, insert = client_with_insert
+    task_id = insert("Some task")
+    r = client.patch(f"/tasks/{task_id}", json={"status": "closed"})
+    assert r.json()["status"] == "closed"
+    assert "§closed" in r.json()["text"]
+
+
+def test_close_injects_completion_timestamp(client_with_insert):
+    """PATCH status=closed writes >:timestamp into task text."""
+    client, insert = client_with_insert
+    task_id = insert("Some task")
+    r = client.patch(f"/tasks/{task_id}", json={"status": "closed"})
+    assert ">:" in r.json()["text"]
+
+
+def test_close_replaces_existing_status_token(client_with_insert):
+    """Closing a §wait task replaces §wait with §closed."""
+    client, insert = client_with_insert
+    task_id = insert("Blocked task §wait")
+    r = client.patch(f"/tasks/{task_id}", json={"status": "closed"})
+    text = r.json()["text"]
+    assert "§closed" in text
+    assert "§wait" not in text
+
+
+def test_reopen_removes_closed_tokens(client_with_insert):
+    """Patching status=open removes §closed and >: tokens from text."""
+    client, insert = client_with_insert
+    task_id = insert("Some task")
+    client.patch(f"/tasks/{task_id}", json={"status": "closed"})
+    r = client.patch(f"/tasks/{task_id}", json={"status": "open"})
+    text = r.json()["text"]
+    assert "§closed" not in text
+    assert ">:" not in text

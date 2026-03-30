@@ -35,7 +35,7 @@ from .models import (
     TaskPatch,
 )
 from .mqtt import mqtt_publish
-from .parser import parse_text, strip_tokens
+from .parser import apply_status_to_text, inject_source_timestamp, parse_text, strip_tokens
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -71,12 +71,13 @@ def _row_to_task(row: dict) -> Task:
 
 @app.post("/tasks", response_model=Task, status_code=201)
 async def create_task(body: TaskCreate):
-    parsed = parse_text(body.text)
     now = datetime.now(timezone.utc).isoformat()
+    text = inject_source_timestamp(body.text, now)
+    parsed = parse_text(text)
     row = {
         "id": str(uuid.uuid4()),
-        "text": body.text,
-        "status": "open",
+        "text": text,
+        "status": parsed["status"],
         "due": parsed["due"],
         "priority": parsed["priority"],
         "duration": parsed["duration"],
@@ -91,7 +92,7 @@ async def create_task(body: TaskCreate):
     }
     await db_create_task(row)
     row["tags"] = json.loads(row["tags"])
-    mqtt_publish("tasks/read", body.text)
+    mqtt_publish("tasks/read", text)
     return _row_to_task(row)
 
 
@@ -107,7 +108,7 @@ async def list_tasks(
             decoded = filter  # fallback: treat as raw (aids manual curl debugging)
         where, params = parse_filter(decoded)
     else:
-        where, params = "status='open'", []
+        where, params = "status!='closed'", []
     rows = await db_list_tasks(status, where, params)
     return [_row_to_task(r) for r in rows]
 
@@ -127,10 +128,26 @@ async def update_task(task_id: str, body: TaskPatch):
         raise HTTPException(404)
 
     fields: dict = {}
+    now = datetime.now(timezone.utc).isoformat()
 
-    if body.text is not None:
-        parsed = parse_text(body.text)
-        fields["text"] = body.text
+    # Start from body.text if provided, else existing text
+    working_text = body.text if body.text is not None else existing["text"]
+    text_mutated = False
+
+    if body.status == "closed":
+        working_text = apply_status_to_text(working_text, "closed", now)
+        fields["status"] = "closed"
+        fields["completed_at"] = now
+        text_mutated = True
+    elif body.status in ("open", "wait", "started"):
+        working_text = apply_status_to_text(working_text, body.status, now)
+        fields["status"] = body.status
+        fields["completed_at"] = None
+        text_mutated = True
+
+    if body.text is not None or text_mutated:
+        parsed = parse_text(working_text)
+        fields["text"] = working_text
         fields["due"] = parsed["due"]
         fields["priority"] = parsed["priority"]
         fields["duration"] = parsed["duration"]
@@ -142,17 +159,10 @@ async def update_task(task_id: str, body: TaskPatch):
             fields["source_pipeline"] = parsed["source_pipeline"]
             fields["source_agent"] = parsed["source_agent"]
 
-    if body.status == "closed":
-        fields["status"] = "closed"
-        fields["completed_at"] = datetime.now(timezone.utc).isoformat()
-    elif body.status == "open":
-        fields["status"] = "open"
-        fields["completed_at"] = None
-
     await db_update_task(task_id, fields)
     row = await db_get_task(task_id)
-    if body.text is not None:
-        mqtt_publish("tasks/read", body.text)
+    if body.text is not None or text_mutated:
+        mqtt_publish("tasks/read", working_text)
     return _row_to_task(row)
 
 

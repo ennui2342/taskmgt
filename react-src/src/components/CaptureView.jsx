@@ -6,6 +6,7 @@ const STATIC = {
   '!': ['!1', '!2', '!3'],
   '^': ['^today', '^tomorrow', '^+1w'],
   '=': ['=15m', '=30m', '=1h', '=2h'],
+  '§': ['§wait', '§started', '§open'],
 }
 
 export default function CaptureView() {
@@ -114,6 +115,7 @@ export default function CaptureView() {
           { tok: '@', cls: 'text-green-400' },
           { tok: '^', cls: 'text-yellow-400' },
           { tok: '=', cls: 'text-purple-400' },
+          { tok: '§', cls: 'text-orange-400' },
         ].map(({ tok, cls }) => (
           <button
             key={tok}

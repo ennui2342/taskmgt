@@ -15,6 +15,7 @@ _AGENT_RE = re.compile(r"(?<!\+)\+(?!\+)(\S+)")
 _HUMAN_RE = re.compile(r"\+\+(\S+)")
 _DUR_RE = re.compile(r"=(\S+)")
 _SRC_RE = re.compile(r"<(\S+)")
+_STATUS_RE = re.compile(r"§(\S+)")
 
 
 def _parse_text(text: str) -> dict:
@@ -27,6 +28,7 @@ def _parse_text(text: str) -> dict:
     agent_m = _AGENT_RE.search(first_line)
     dur_m = _DUR_RE.search(first_line)
     src_m = _SRC_RE.search(first_line)
+    status_m = _STATUS_RE.search(first_line)
 
     due = None
     if due_m:
@@ -53,6 +55,7 @@ def _parse_text(text: str) -> dict:
         "duration": dur_m.group(1) if dur_m else None,
         "source_pipeline": source_pipeline,
         "source_agent": source_agent,
+        "status": status_m.group(1) if status_m else "open",
     }
 
 
@@ -110,7 +113,7 @@ def insert(tmp_path, monkeypatch):
         row = {
             "id": str(uuid.uuid4()),
             "text": text,
-            "status": "open",
+            "status": parsed["status"],
             "due": parsed["due"],
             "priority": parsed["priority"],
             "duration": parsed["duration"],
@@ -157,7 +160,7 @@ def client_with_insert(tmp_path, monkeypatch):
         row = {
             "id": str(uuid.uuid4()),
             "text": text,
-            "status": "open",
+            "status": parsed["status"],
             "due": parsed["due"],
             "priority": parsed["priority"],
             "duration": parsed["duration"],

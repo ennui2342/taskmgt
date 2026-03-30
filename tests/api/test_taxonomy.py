@@ -154,8 +154,8 @@ def test_counts_overdue(client_with_insert):
 
 def test_counts_wait(client_with_insert):
     client, insert = client_with_insert
-    insert("Waiting for approval #wait")
-    insert("Also waiting #wait")
+    insert("Waiting for approval", status="wait")
+    insert("Also waiting", status="wait")
     insert("Not waiting #read")
     r = client.get("/counts")
     assert r.json()["wait"] == 2
@@ -163,7 +163,7 @@ def test_counts_wait(client_with_insert):
 
 def test_counts_started(client_with_insert):
     client, insert = client_with_insert
-    insert("In progress task #started")
+    insert("In progress task", status="started")
     insert("Not started yet")
     r = client.get("/counts")
     assert r.json()["started"] == 1
