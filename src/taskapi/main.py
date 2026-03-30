@@ -161,6 +161,11 @@ async def update_task(task_id: str, body: TaskPatch):
         if parsed["has_source_token"]:
             fields["source_pipeline"] = parsed["source_pipeline"]
             fields["source_agent"] = parsed["source_agent"]
+        # Sync status from §token in text if not overridden by explicit body.status
+        if "status" not in fields:
+            fields["status"] = parsed["status"]
+            if parsed["status"] != "closed":
+                fields["completed_at"] = None
 
     await db_update_task(task_id, fields)
     row = await db_get_task(task_id)

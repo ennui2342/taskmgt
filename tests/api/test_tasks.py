@@ -257,6 +257,15 @@ def test_create_name_strips_status_token(client_with_insert):
     assert r.json()["name"] == "Buy milk"
 
 
+def test_patch_text_with_status_token_updates_status(client_with_insert):
+    """Patching text that contains §status should update the status column."""
+    client, insert = client_with_insert
+    task_id = insert("Some task")
+    r = client.patch(f"/tasks/{task_id}", json={"text": "Some task §started"})
+    assert r.status_code == 200
+    assert r.json()["status"] == "started"
+
+
 def test_patch_status_to_wait(client_with_insert):
     client, insert = client_with_insert
     task_id = insert("Some task")
