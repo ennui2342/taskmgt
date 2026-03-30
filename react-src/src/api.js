@@ -16,10 +16,11 @@ const b64 = s => btoa(unescape(encodeURIComponent(s)))
 
 export const api = {
   tasks: {
-    list:   (filter) => {
+    list:   (filter, showClosed = false) => {
       if (filter === '^inbox') return req('/tasks?inbox=1')
       const params = new URLSearchParams()
       if (filter) params.set('filter', b64(filter))
+      if (showClosed) params.set('status', 'all')
       const qs = params.toString()
       return req('/tasks' + (qs ? `?${qs}` : ''))
     },
