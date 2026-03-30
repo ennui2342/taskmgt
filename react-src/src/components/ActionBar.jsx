@@ -18,7 +18,7 @@ function ToggleSwitch({ checked, onChange }) {
   )
 }
 
-export default function ActionBar({ selected, activeFilter, onDeselect, showClosed, onToggleClosed }) {
+export default function ActionBar({ selected, activeFilter, onDeselect, showClosed, onToggleClosed, hideClosedToggle }) {
   const [confirming, setConfirming] = useState(false)
   const closeTask  = useCloseTask()
   const deleteTask = useDeleteTask()
@@ -34,10 +34,12 @@ export default function ActionBar({ selected, activeFilter, onDeselect, showClos
             Task Filter: {activeFilter || 'all tasks'}
           </span>
         )}
-        <div className="ml-auto flex items-center gap-2">
-          <span className="text-xs text-gray-500">closed</span>
-          <ToggleSwitch checked={showClosed} onChange={onToggleClosed} />
-        </div>
+        {!hideClosedToggle && (
+          <div className="ml-auto flex items-center gap-2">
+            <span className="text-xs text-gray-500">closed</span>
+            <ToggleSwitch checked={showClosed} onChange={onToggleClosed} />
+          </div>
+        )}
       </div>
     )
   }

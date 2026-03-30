@@ -61,6 +61,7 @@ export default function MainPanel({ favourite, mobile, selectedId: controlledId,
             onDeselect={() => _setSelectedId(null)}
             showClosed={showClosed}
             onToggleClosed={() => { setShowClosed(v => !v); _setSelectedId(null) }}
+            hideClosedToggle={view === 'closed'}
           />
         )}
         {view !== 'closed' && !showClosed && <SmartAddBar seed={seed} />}
