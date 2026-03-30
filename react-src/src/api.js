@@ -10,13 +10,16 @@ const json = body => ({
   body: JSON.stringify(body),
 })
 
+
+// UTF-8-safe base64: handles multi-byte chars (e.g. §) that btoa alone cannot encode
+const b64 = s => btoa(unescape(encodeURIComponent(s)))
+
 export const api = {
   tasks: {
-    list:   (filter, closed = false) => {
-      if (filter === '^closed') return req('/tasks?status=closed')
+    list:   (filter) => {
+      if (filter === '^inbox') return req('/tasks?inbox=1')
       const params = new URLSearchParams()
-      if (filter) params.set('filter', btoa(filter))
-      if (closed) params.set('status', 'closed')
+      if (filter) params.set('filter', b64(filter))
       const qs = params.toString()
       return req('/tasks' + (qs ? `?${qs}` : ''))
     },
@@ -42,11 +45,11 @@ export function viewToFilter(view, tag, location) {
     case 'inbox':    return '^inbox'
     case 'today':    return '^today'
     case 'overdue':  return '^overdue'
-    case 'closed':   return '^closed'
+    case 'closed':   return '§closed'
     case 'tag':      return tag      ? `#${tag}`       : ''
     case 'location': return location ? `@${location}`  : ''
-    case 'wait':     return '^wait'
-    case 'started':  return '^started'
+    case 'wait':     return '§wait'
+    case 'started':  return '§started'
     default:         return ''
   }
 }

@@ -203,3 +203,42 @@ def test_filter_via_base64_dsl_not(client_with_insert):
     assert "Write task" in names
     assert "Untagged task" in names
     assert "Read task" not in names
+
+
+def test_inbox_direct_query(client_with_insert):
+    """GET /tasks?inbox=1 returns non-closed tasks with no tags."""
+    client, insert = client_with_insert
+    insert("Inbox task")
+    insert("Tagged task #research")
+    insert("Closed task", status="closed", completed_at="2024-01-01T00:00:00+00:00")
+    r = client.get("/tasks?inbox=1")
+    assert r.status_code == 200
+    results = r.json()
+    assert len(results) == 1
+    assert results[0]["name"] == "Inbox task"
+
+
+def test_filter_status_wait(client_with_insert):
+    """§wait filter returns only wait-status tasks."""
+    import base64
+    client, insert = client_with_insert
+    insert("Waiting task", status="wait")
+    insert("Open task")
+    encoded = base64.b64encode(b"\xc2\xa7wait").decode()  # §wait UTF-8
+    r = client.get(f"/tasks?filter={encoded}")
+    results = r.json()
+    assert len(results) == 1
+    assert results[0]["status"] == "wait"
+
+
+def test_filter_status_closed(client_with_insert):
+    """§closed filter returns only closed tasks."""
+    import base64
+    client, insert = client_with_insert
+    insert("Closed task", status="closed", completed_at="2024-01-01T00:00:00+00:00")
+    insert("Open task")
+    encoded = base64.b64encode("§closed".encode()).decode()
+    r = client.get(f"/tasks?filter={encoded}")
+    results = r.json()
+    assert len(results) == 1
+    assert results[0]["status"] == "closed"

@@ -1,17 +1,31 @@
+import re
 from datetime import datetime, timezone
+
+_STATUS_FILTER_RE = re.compile(r"\s*§(open|wait|started|closed)")
 
 
 def parse_filter(s: str) -> tuple[str, list]:
+    # §status token overrides the default status scope
+    sm = _STATUS_FILTER_RE.search(s)
+    if sm:
+        status_prefix = f"status='{sm.group(1)}'"
+        s = _STATUS_FILTER_RE.sub("", s).strip()
+    else:
+        status_prefix = "status!='closed'"
+
+    if not s:
+        return status_prefix, []
+
     if s.startswith("("):
         where, params = _parse_dsl(s)
-        return f"status!='closed' AND ({where})", params
-    return _parse_legacy(s)
+        return f"{status_prefix} AND ({where})", params
+    return _parse_legacy(s, status_prefix)
 
 
 # ── Legacy (flat AND) parser ──────────────────────────────────────────────────
 
-def _parse_legacy(s: str) -> tuple[str, list]:
-    clauses = ["status!='closed'"]
+def _parse_legacy(s: str, status_prefix: str = "status!='closed'") -> tuple[str, list]:
+    clauses = [status_prefix]
     params: list = []
     for token in s.split():
         clause, token_params = _compile_atom(token)
@@ -103,8 +117,4 @@ def _compile_atom(token: str) -> tuple[str, list]:
         return "due BETWEEN ? AND ?", [today_start, today_end]
     if token == "^overdue":
         return "due IS NOT NULL AND due < ?", [today_start]
-    if token == "^wait":
-        return "status='wait'", []
-    if token == "^started":
-        return "status='started'", []
     return "", []

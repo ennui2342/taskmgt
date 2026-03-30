@@ -147,21 +147,40 @@ def test_legacy_special_today():
     assert "due BETWEEN ? AND ?" in where
 
 
-def test_legacy_special_wait():
-    where, params = parse_filter("^wait")
+def test_status_filter_wait():
+    where, params = parse_filter("§wait")
+    assert where == "status='wait'"
+    assert params == []
+
+
+def test_status_filter_started():
+    where, params = parse_filter("§started")
+    assert where == "status='started'"
+    assert params == []
+
+
+def test_status_filter_closed():
+    where, params = parse_filter("§closed")
+    assert where == "status='closed'"
+    assert params == []
+
+
+def test_status_filter_open():
+    where, params = parse_filter("§open")
+    assert where == "status='open'"
+    assert params == []
+
+
+def test_status_filter_wait_with_tag():
+    where, params = parse_filter("§wait #next")
     assert "status='wait'" in where
+    assert TAG_SUBQUERY in where
+    assert params == ["next"]
 
 
-def test_legacy_special_started():
-    where, params = parse_filter("^started")
-    assert "status='started'" in where
-
-
-def test_dsl_special_atom_wait():
-    where, params = parse_filter("(^wait)")
+def test_status_filter_in_dsl_prefix():
+    """§status before a DSL expression sets the scope."""
+    where, params = parse_filter("§wait (&(#next)(@home))")
     assert "status='wait'" in where
-
-
-def test_dsl_special_atom_started():
-    where, params = parse_filter("(^started)")
-    assert "status='started'" in where
+    assert TAG_SUBQUERY in where
+    assert "location=?" in where

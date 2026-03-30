@@ -137,10 +137,11 @@ List tasks, with optional filtering.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `status` | string | `"open"` | Override status scope: `"open"` (non-closed), `"closed"`, or `"all"` |
+| `status` | string | `"open"` | Low-level status scope override: `"open"` (non-closed), `"closed"`, or `"all"`. Prefer `§status` in the filter instead. |
 | `filter` | string | `""` | **Base64-encoded** filter expression (see [Filter Syntax](#filter-syntax)) |
+| `inbox` | bool | `false` | Direct inbox query — returns non-closed tasks with no tags. Bypasses filter parsing. |
 
-By default (no `filter`, no `status`), returns all tasks where `status != 'closed'` — i.e. `open`, `wait`, and `started` tasks. Pass `?status=closed` to list closed tasks; `?status=all` to return everything.
+By default (no parameters), returns all tasks where `status != 'closed'` — i.e. `open`, `wait`, and `started` tasks. Use a `§status` filter token to scope by status (e.g. `?filter=<b64('§closed')>` for closed tasks). Use `?inbox=1` for the inbox view.
 
 Tasks are returned ordered by: `priority ASC NULLS LAST`, then `created_at ASC`.
 
@@ -336,8 +337,10 @@ A space-separated list of tokens, all implicitly ANDed. Returns non-closed tasks
 | `^inbox` | Tasks with no tags |
 | `^today` | Tasks due today |
 | `^overdue` | Tasks with a past due date |
-| `^wait` | Tasks with `status = 'wait'` |
-| `^started` | Tasks with `status = 'started'` |
+| `§wait` | Tasks with `status = 'wait'` |
+| `§started` | Tasks with `status = 'started'` |
+| `§closed` | Tasks with `status = 'closed'` |
+| `§open` | Tasks with `status = 'open'` |
 
 Unknown tokens are silently ignored.
 
@@ -350,8 +353,11 @@ curl "http://localhost:8081/tasks?filter=$(echo -n '!1 #ops' | base64)"
 # Alice's tasks due today
 curl "http://localhost:8081/tasks?filter=$(echo -n '++alice ^today' | base64)"
 
-# All waiting tasks
-curl "http://localhost:8081/tasks?filter=$(echo -n '^wait' | base64)"
+# Waiting tasks (§ is UTF-8 two-byte sequence 0xC2 0xA7)
+curl "http://localhost:8081/tasks?filter=$(printf '§wait' | base64)"
+
+# Inbox (non-closed tasks with no tags — direct query, no filter needed)
+curl "http://localhost:8081/tasks?inbox=1"
 ```
 
 ---
@@ -389,7 +395,9 @@ curl "http://localhost:8081/tasks?filter=$(echo -n '(!(#waiting))' | base64)"
 curl "http://localhost:8081/tasks?filter=$(echo -n '(|(^today)(^overdue))' | base64)"
 
 # Waiting OR started tasks
-curl "http://localhost:8081/tasks?filter=$(echo -n '(|(^wait)(^started))' | base64)"
+curl "http://localhost:8081/tasks?filter=$(printf '§wait' | base64)"
+# (§wait and §started are status-scope tokens; for OR, combine with a tag filter:
+#  e.g. §wait #next for waiting tasks tagged "next")
 ```
 
 ---

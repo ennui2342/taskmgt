@@ -100,8 +100,11 @@ async def create_task(body: TaskCreate):
 async def list_tasks(
     status: str = Query(default="open"),
     filter: str = Query(default=""),
+    inbox: bool = Query(default=False),
 ):
-    if filter.strip():
+    if inbox:
+        where, params = "status!='closed' AND tags='[]'", []
+    elif filter.strip():
         try:
             decoded = base64.b64decode(filter).decode("utf-8")
         except Exception:
