@@ -1,0 +1,106 @@
+#!/usr/bin/env python3
+"""taskdb — direct SQLite operations on the task database.
+
+Usage:
+  taskdb rename-tag <old_tag> <new_tag>   Rename a tag across all tasks
+  taskdb delete-tag <tag>                 Remove a tag from all tasks
+
+The database path is read from DATABASE_PATH env var, or --db flag.
+"""
+import argparse
+import json
+import os
+import re
+import sqlite3
+import sys
+
+
+def get_db_path(args):
+    path = getattr(args, "db", None) or os.environ.get("DATABASE_PATH")
+    if not path:
+        sys.exit("Error: set DATABASE_PATH env var or use --db <path>")
+    return path
+
+
+def rename_tag(con, old_tag: str, new_tag: str):
+    # Match #old_tag as a whole token (not a prefix of another tag)
+    # Tag names may contain dots, hyphens, etc.
+    old_escaped = re.escape(old_tag)
+    tag_re = re.compile(rf"(?<![^\s])#{old_escaped}(?=\s|$)")
+
+    rows = con.execute("SELECT id, text, tags FROM tasks").fetchall()
+    updated = 0
+    for task_id, text, tags_json in rows:
+        tags = json.loads(tags_json or "[]")
+        if old_tag not in tags:
+            continue
+
+        # Update tags list
+        new_tags = [new_tag if t == old_tag else t for t in tags]
+
+        # Update text: replace #old_tag token with #new_tag
+        new_text = tag_re.sub(f" #{new_tag}", text)
+        # Clean up any double-space introduced
+        new_text = re.sub(r"  +", " ", new_text).strip()
+
+        con.execute(
+            "UPDATE tasks SET tags=?, text=? WHERE id=?",
+            (json.dumps(new_tags), new_text, task_id),
+        )
+        updated += 1
+
+    con.commit()
+    print(f"Renamed #{old_tag} → #{new_tag} in {updated} task(s).")
+
+
+def delete_tag(con, tag: str):
+    tag_escaped = re.escape(tag)
+    tag_re = re.compile(rf"\s*#{tag_escaped}(?=\s|$)")
+
+    rows = con.execute("SELECT id, text, tags FROM tasks").fetchall()
+    updated = 0
+    for task_id, text, tags_json in rows:
+        tags = json.loads(tags_json or "[]")
+        if tag not in tags:
+            continue
+
+        new_tags = [t for t in tags if t != tag]
+        new_text = tag_re.sub("", text).strip()
+
+        con.execute(
+            "UPDATE tasks SET tags=?, text=? WHERE id=?",
+            (json.dumps(new_tags), new_text, task_id),
+        )
+        updated += 1
+
+    con.commit()
+    print(f"Deleted #{tag} from {updated} task(s).")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Direct SQLite task database operations")
+    parser.add_argument("--db", metavar="PATH", help="Path to tasks.db (overrides DATABASE_PATH)")
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    p_rename = sub.add_parser("rename-tag", help="Rename a tag across all tasks")
+    p_rename.add_argument("old_tag", help="Existing tag name (without #)")
+    p_rename.add_argument("new_tag", help="New tag name (without #)")
+
+    p_delete = sub.add_parser("delete-tag", help="Remove a tag from all tasks")
+    p_delete.add_argument("tag", help="Tag name to remove (without #)")
+
+    args = parser.parse_args()
+    db_path = get_db_path(args)
+
+    con = sqlite3.connect(db_path)
+    try:
+        if args.command == "rename-tag":
+            rename_tag(con, args.old_tag, args.new_tag)
+        elif args.command == "delete-tag":
+            delete_tag(con, args.tag)
+    finally:
+        con.close()
+
+
+if __name__ == "__main__":
+    main()
