@@ -29,9 +29,11 @@ export default function ActionBar({ selected, activeFilter, onDeselect, showClos
   if (!selected) {
     return (
       <div className="action-bar-empty flex h-12 items-center border-b border-gray-700 px-4">
-        <span className="font-mono text-xs text-gray-400">
-          Task Filter: {activeFilter || 'all tasks'}
-        </span>
+        {activeFilter != null && (
+          <span className="font-mono text-xs text-gray-400">
+            Task Filter: {activeFilter || 'all tasks'}
+          </span>
+        )}
         <div className="ml-auto flex items-center gap-2">
           <span className="text-xs text-gray-500">closed</span>
           <ToggleSwitch checked={showClosed} onChange={onToggleClosed} />

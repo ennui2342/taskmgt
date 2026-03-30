@@ -49,9 +49,7 @@ export default function MainPanel({ favourite, mobile, selectedId: controlledId,
     }
   }
 
-  const activeFilter = favourite
-    ? (favFilter ?? '')
-    : viewToFilter(view, tag, location)
+  const activeFilter = favourite ? (favFilter ?? '') : null
 
   return (
     <div className="flex flex-1 overflow-hidden">
