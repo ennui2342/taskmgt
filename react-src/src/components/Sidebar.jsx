@@ -124,26 +124,25 @@ function FilterNavItem({ id, to, label, idx, filter }) {
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }}
-      className={`nav-item group flex items-center ${isActive ? 'active' : ''}`}
+      className={`nav-item group relative flex items-center ${isActive ? 'active' : ''}`}
     >
       <button
-        className="flex-shrink-0 cursor-grab px-1 text-gray-700 opacity-0 hover:text-gray-500 group-hover:opacity-100 active:cursor-grabbing"
+        className="absolute left-0 top-0 bottom-0 flex w-3 cursor-grab items-center justify-center text-gray-700 opacity-0 hover:text-gray-500 group-hover:opacity-100 active:cursor-grabbing"
         title="Drag to reorder"
         {...attributes}
         {...listeners}
       >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-          <path d="M7 2a1 1 0 00-.707 1.707L7 5.414V17a1 1 0 001 1h4a1 1 0 001-1V5.414l.707-.707A1 1 0 0013 2H7z" />
-          <circle cx="7" cy="4" r="1" /><circle cx="13" cy="4" r="1" />
-          <circle cx="7" cy="8" r="1" /><circle cx="13" cy="8" r="1" />
-          <circle cx="7" cy="12" r="1" /><circle cx="13" cy="12" r="1" />
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-2.5 w-2.5" viewBox="0 0 20 20" fill="currentColor">
+          <circle cx="7" cy="5" r="1.5" /><circle cx="13" cy="5" r="1.5" />
+          <circle cx="7" cy="10" r="1.5" /><circle cx="13" cy="10" r="1.5" />
+          <circle cx="7" cy="15" r="1.5" /><circle cx="13" cy="15" r="1.5" />
         </svg>
       </button>
       <Link
         to={to}
-        className={`flex flex-1 items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors ${
+        className={`flex flex-1 items-center gap-2 rounded px-3 py-1.5 text-sm transition-colors ${
           isActive
-            ? 'border-l-2 border-indigo-500 bg-indigo-600/25 pl-[6px] text-white'
+            ? 'border-l-2 border-indigo-500 bg-indigo-600/25 pl-[10px] text-white'
             : 'text-gray-400 hover:bg-gray-800 hover:text-gray-100'
         }`}
       >
