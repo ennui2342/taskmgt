@@ -222,6 +222,13 @@ async def update_filter(idx: int, body: FilterPatch):
     return filters[idx]
 
 
+@app.put("/filters", response_model=list[FilterItem])
+async def reorder_filters(body: list[FilterItem]):
+    filters = [{"name": f.name, "filter": f.filter} for f in body]
+    _write_filters(filters)
+    return filters
+
+
 @app.delete("/filters/{idx}", status_code=204)
 async def delete_filter(idx: int):
     filters = _read_filters()

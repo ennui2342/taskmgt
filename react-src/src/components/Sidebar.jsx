@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { useCounts, useTags, useLocations, useFilters, useCreateFilter, useDeleteFilter, useTaskCount } from '../hooks'
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
+import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { useCounts, useTags, useLocations, useFilters, useCreateFilter, useDeleteFilter, useReorderFilters, useTaskCount } from '../hooks'
 
 function Badge({ count, urgent }) {
   if (!count) return null
@@ -109,20 +112,38 @@ function AddFilterForm({ onDone }) {
   )
 }
 
-function FilterNavItem({ to, label, idx, filter }) {
+function FilterNavItem({ id, to, label, idx, filter }) {
   const { pathname, search } = useLocation()
   const current = pathname + search
   const isActive = current === to || (pathname === to && !search)
   const deleteFilter = useDeleteFilter()
   const count = useTaskCount(filter)
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
 
   return (
-    <div className={`nav-item group flex items-center ${isActive ? 'active' : ''}`}>
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }}
+      className={`nav-item group flex items-center ${isActive ? 'active' : ''}`}
+    >
+      <button
+        className="flex-shrink-0 cursor-grab px-1 text-gray-700 opacity-0 hover:text-gray-500 group-hover:opacity-100 active:cursor-grabbing"
+        title="Drag to reorder"
+        {...attributes}
+        {...listeners}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+          <path d="M7 2a1 1 0 00-.707 1.707L7 5.414V17a1 1 0 001 1h4a1 1 0 001-1V5.414l.707-.707A1 1 0 0013 2H7z" />
+          <circle cx="7" cy="4" r="1" /><circle cx="13" cy="4" r="1" />
+          <circle cx="7" cy="8" r="1" /><circle cx="13" cy="8" r="1" />
+          <circle cx="7" cy="12" r="1" /><circle cx="13" cy="12" r="1" />
+        </svg>
+      </button>
       <Link
         to={to}
-        className={`flex flex-1 items-center gap-2 rounded px-3 py-1.5 text-sm transition-colors ${
+        className={`flex flex-1 items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors ${
           isActive
-            ? 'border-l-2 border-indigo-500 bg-indigo-600/25 pl-[10px] text-white'
+            ? 'border-l-2 border-indigo-500 bg-indigo-600/25 pl-[6px] text-white'
             : 'text-gray-400 hover:bg-gray-800 hover:text-gray-100'
         }`}
       >
@@ -148,6 +169,16 @@ export default function Sidebar() {
   const { data: locs = [] }     = useLocations()
   const { data: filters = [] }  = useFilters()
   const [addingFilter, setAddingFilter] = useState(false)
+  const reorderFilters = useReorderFilters()
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+
+  function handleDragEnd(event) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIndex = filters.findIndex(f => f.name === active.id)
+    const newIndex = filters.findIndex(f => f.name === over.id)
+    reorderFilters.mutate(arrayMove(filters, oldIndex, newIndex))
+  }
 
   return (
     <nav className="flex w-full flex-shrink-0 flex-col gap-0.5 overflow-y-auto bg-gray-950 px-2 py-4 md:w-52">
@@ -165,9 +196,13 @@ export default function Sidebar() {
 
       <SectionHeading label="Filters" onAdd={() => setAddingFilter(true)} />
       {addingFilter && <AddFilterForm onDone={() => setAddingFilter(false)} />}
-      {filters.map((f, i) => (
-        <FilterNavItem key={i} to={`/favourite/${i}`} label={f.name} idx={i} filter={f.filter} />
-      ))}
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={filters.map(f => f.name)} strategy={verticalListSortingStrategy}>
+          {filters.map((f, i) => (
+            <FilterNavItem key={f.name} id={f.name} to={`/favourite/${i}`} label={f.name} idx={i} filter={f.filter} />
+          ))}
+        </SortableContext>
+      </DndContext>
 
       {tags.length > 0 && (
         <>

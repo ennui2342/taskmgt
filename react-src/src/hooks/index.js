@@ -117,3 +117,20 @@ export function useDeleteFilter() {
     onSuccess:  invalidate,
   })
 }
+
+export function useReorderFilters() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (filters) => api.filters.reorder(filters),
+    onMutate: async (filters) => {
+      await qc.cancelQueries({ queryKey: ['filters'] })
+      const prev = qc.getQueryData(['filters'])
+      qc.setQueryData(['filters'], filters)
+      return { prev }
+    },
+    onError: (_err, _filters, ctx) => {
+      qc.setQueryData(['filters'], ctx.prev)
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ['filters'] }),
+  })
+}
