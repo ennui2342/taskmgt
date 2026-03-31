@@ -51,6 +51,12 @@ export default function ActionBar({ selected, activeFilter, onDeselect, showClos
           ✓ Close task
         </button>
       )}
+      {!hideClosedToggle && (
+        <div className="ml-auto flex items-center gap-2">
+          <span className="text-xs text-gray-500">closed</span>
+          <ToggleSwitch checked={showClosed} onChange={onToggleClosed} />
+        </div>
+      )}
     </div>
   )
 }

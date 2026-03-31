@@ -20,7 +20,7 @@ export const api = {
       if (filter === '^inbox') return req('/tasks?inbox=1')
       const params = new URLSearchParams()
       if (filter) params.set('filter', b64(filter))
-      if (showClosed) params.set('status', 'all')
+      if (showClosed) params.set('status', 'closed')
       const qs = params.toString()
       return req('/tasks' + (qs ? `?${qs}` : ''))
     },

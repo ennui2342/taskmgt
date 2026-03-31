@@ -449,6 +449,11 @@ def main():
         help="New status",
     )
     p_update.add_argument("--close", "-c", action="store_true", help="Shorthand for --status closed")
+    p_update.add_argument(
+        "--provenance", metavar="SOURCE",
+        help="Provenance string embedded as >actor token on close (default: cli.<USER>). "
+             "Use e.g. 'cli.claude-code.<username>' when invoking as an agent.",
+    )
     p_update.add_argument("--format", "-f", default="json", choices=["json", "table"])
     p_update.set_defaults(func=cmd_update)
 
