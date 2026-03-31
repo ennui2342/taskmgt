@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react'
 // Locally, falls back to localhost:8081 (run `make api-up` separately).
 const API_TARGET = process.env.VITE_API_TARGET || 'http://localhost:8081'
 
-const apiRoutes = ['/tasks', '/tags', '/locations', '/counts', '/pipelines', '/filters']
+const apiRoutes = ['/tasks', '/tags', '/locations', '/counts', '/filters']
 
 export default defineConfig({
   plugins: [react()],

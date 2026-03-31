@@ -72,31 +72,6 @@ def test_locations_counts_only_open(client_with_insert):
     assert desk["count"] == 1
 
 
-# ── GET /pipelines ────────────────────────────────────────────────────────────
-
-def test_pipelines_returns_list_with_count(client_with_insert):
-    client, insert = client_with_insert
-    insert("RTM task one", source_pipeline="rtm")
-    insert("RTM task two", source_pipeline="rtm")
-    insert("Other task", source_pipeline="other")
-    r = client.get("/pipelines")
-    assert r.status_code == 200
-    data = r.json()
-    rtm = next((p for p in data if p["pipeline"] == "rtm"), None)
-    assert rtm is not None
-    assert rtm["count"] == 2
-    other = next((p for p in data if p["pipeline"] == "other"), None)
-    assert other is not None
-    assert other["count"] == 1
-
-
-def test_pipelines_empty_when_no_pipelines(client_with_insert):
-    client, insert = client_with_insert
-    insert("No pipeline task")
-    r = client.get("/pipelines")
-    assert r.json() == []
-
-
 # ── GET /counts ───────────────────────────────────────────────────────────────
 
 def test_counts_has_all_required_keys(client_with_insert):

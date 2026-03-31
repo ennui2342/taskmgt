@@ -18,17 +18,16 @@ from .db import (
     db_get_task,
     db_list_tasks,
     db_locations,
-    db_pipelines,
     db_tags,
     db_update_task,
 )
 from .filters import parse_filter
+from .migrations import run_migrations
 from .models import (
     Counts,
     FilterItem,
     FilterPatch,
     LocationCount,
-    PipelineCount,
     TagCount,
     Task,
     TaskCreate,
@@ -39,6 +38,7 @@ from .parser import apply_status_to_text, inject_source_timestamp, parse_text, s
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    run_migrations(os.environ["DATABASE_PATH"])
     await init_db()
     yield
     await close_db()
@@ -60,8 +60,6 @@ def _row_to_task(row: dict) -> Task:
         location=row.get("location"),
         assignee_agent=row.get("assignee_agent"),
         assignee_human=row.get("assignee_human"),
-        source_pipeline=row.get("source_pipeline"),
-        source_agent=row.get("source_agent"),
         created_at=row["created_at"],
         completed_at=row.get("completed_at"),
     )
@@ -85,8 +83,6 @@ async def create_task(body: TaskCreate):
         "location": parsed["location"],
         "assignee_agent": parsed["assignee_agent"],
         "assignee_human": parsed["assignee_human"],
-        "source_pipeline": body.source_pipeline or parsed["source_pipeline"],
-        "source_agent": body.source_agent or parsed["source_agent"],
         "created_at": now,
         "completed_at": None,
     }
@@ -158,9 +154,6 @@ async def update_task(task_id: str, body: TaskPatch):
         fields["location"] = parsed["location"]
         fields["assignee_agent"] = parsed["assignee_agent"]
         fields["assignee_human"] = parsed["assignee_human"]
-        if parsed["has_source_token"]:
-            fields["source_pipeline"] = parsed["source_pipeline"]
-            fields["source_agent"] = parsed["source_agent"]
         # Sync status from §token in text if not overridden by explicit body.status
         if "status" not in fields:
             fields["status"] = parsed["status"]
@@ -192,11 +185,6 @@ async def tags():
 @app.get("/locations", response_model=list[LocationCount])
 async def locations():
     return await db_locations()
-
-
-@app.get("/pipelines", response_model=list[PipelineCount])
-async def pipelines():
-    return await db_pipelines()
 
 
 @app.get("/counts", response_model=Counts)

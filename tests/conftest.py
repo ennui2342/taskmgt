@@ -20,7 +20,6 @@ _CREATE_SQL = """
         id TEXT PRIMARY KEY, text TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'open',
         due TEXT, priority INTEGER, duration TEXT, tags TEXT NOT NULL DEFAULT '[]',
         location TEXT, assignee_agent TEXT, assignee_human TEXT,
-        source_pipeline TEXT, source_agent TEXT,
         created_at TEXT NOT NULL, completed_at TEXT
     )
 """

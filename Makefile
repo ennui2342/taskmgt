@@ -1,4 +1,4 @@
-.PHONY: react-dev react-up build test test-api logs ps help
+.PHONY: react-dev react-up build test test-api install-cli logs ps help
 
 # ── React ─────────────────────────────────────────────────────────────────────
 
@@ -20,6 +20,13 @@ test: ## Run the full test suite (BDD + API unit tests)
 
 test-api: ## Run API unit tests only
 	docker compose run --rm test-api pytest tests/api/ -v
+
+# ── CLI ───────────────────────────────────────────────────────────────────────
+
+install-cli: ## Install the tm CLI and symlink to /usr/local/bin
+	pip3 install -e ".[cli]"
+	ln -sf "$$(python3 -c 'import sysconfig; print(sysconfig.get_path("scripts"))')/tm" /usr/local/bin/tm
+	@echo "tm installed: $$(which tm)"
 
 # ── Ops ───────────────────────────────────────────────────────────────────────
 

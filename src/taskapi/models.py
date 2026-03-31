@@ -5,8 +5,6 @@ from pydantic import BaseModel
 
 class TaskCreate(BaseModel):
     text: str
-    source_pipeline: str | None = None
-    source_agent: str | None = None
 
 
 class TaskPatch(BaseModel):
@@ -26,8 +24,6 @@ class Task(BaseModel):
     location: str | None
     assignee_agent: str | None
     assignee_human: str | None
-    source_pipeline: str | None
-    source_agent: str | None
     created_at: str
     completed_at: str | None
 
@@ -39,11 +35,6 @@ class TagCount(BaseModel):
 
 class LocationCount(BaseModel):
     location: str
-    count: int
-
-
-class PipelineCount(BaseModel):
-    pipeline: str
     count: int
 
 

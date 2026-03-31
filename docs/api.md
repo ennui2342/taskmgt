@@ -25,10 +25,10 @@ Interactive docs (Swagger UI): `http://localhost:8081/docs`
 | `location` | string \| null | Location name (without `@`) |
 | `assignee_agent` | string \| null | Agent name (without `+`) |
 | `assignee_human` | string \| null | Human assignee (without `++`) |
-| `source_pipeline` | string \| null | Pipeline that created this task |
-| `source_agent` | string \| null | Agent within pipeline that created this task |
 | `created_at` | string | ISO 8601 datetime (UTC) |
 | `completed_at` | string \| null | ISO 8601 datetime (UTC), set when closed |
+
+Provenance (who/what created the task) is stored in the `text` field via the `<source:timestamp` token — see [Provenance Tokens](#provenance-tokens).
 
 ---
 
@@ -50,7 +50,7 @@ The task text is the **source of truth**: all indexed DB fields are derived from
 | `+agent` | assignee_agent | `Review PR +carbon13` |
 | `++human` | assignee_human | `Review PR ++alice` |
 | `§status` | task status | `Blocked §wait` |
-| `<pipeline.agent:timestamp` | creation provenance | `Task from CI <ci.builder:2026-03-30T14:00:00Z` |
+| `<source:timestamp` | creation provenance | `Task <cli.claude-code.ennui2342:2026-03-30T14:00:00Z` |
 | `>actor:timestamp` | completion provenance | `Done >:2026-03-30T15:00:00Z` |
 
 **Due date** accepts ISO dates (`2026-04-15`), ISO datetimes, or natural language understood by [dateparser](https://dateparser.readthedocs.io/) (`tomorrow`, `next friday`, `in 3 days`).
@@ -59,10 +59,22 @@ The task text is the **source of truth**: all indexed DB fields are derived from
 
 ### Provenance Tokens
 
-The API automatically injects and updates provenance tokens in task text:
+Provenance is embedded directly in the task text by the client using the `<source` token. The API stamps the server-side timestamp on creation.
 
-- **On create**: `<:timestamp` is appended to the first line (or `<actor:timestamp` if `<actor` is already present in the text). The timestamp uses the `Z` UTC suffix to avoid token ambiguity.
-- **On close** (`PATCH status=closed`): `§closed` replaces any existing `§status` token (or is appended), and `>:timestamp` replaces any existing completion token (or is appended).
+**Convention** — three-layer dot-separated namespace:
+
+| Source | Example token |
+|---|---|
+| CLI (direct human use) | `<cli.ennui2342` |
+| CLI (via Claude Code agent) | `<cli.claude-code.ennui2342` |
+| Web frontend | `<web.taskmgt` |
+| aswarm pipeline | `<aswarm.researcher.analyse` |
+
+**Client responsibility**: embed `<source` in the task text before sending. The API will stamp `:timestamp` onto it.
+
+**API behaviour**:
+- **On create**: if `<source` is present, stamps `:timestamp` → `<source:2026-03-30T14:00:00Z`. If no `<` token, injects `<:timestamp` (no source attribution).
+- **On close** (`PATCH status=closed`): `§closed` replaces any existing `§status` token, and `>:timestamp` replaces any existing completion token.
 - **On status change** (to `open`, `wait`, or `started`): the `§status` token is replaced. `>:timestamp` is removed when reopening.
 
 This means the text is always a self-contained record of the task's lifecycle.
@@ -91,26 +103,22 @@ Create a new task.
 
 ```json
 {
-  "text": "Deploy release !1 #ops ^tomorrow",
-  "source_pipeline": "ci",
-  "source_agent": "builder"
+  "text": "Deploy release !1 #ops ^tomorrow <cli.claude-code.ennui2342"
 }
 ```
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `text` | string | yes | SmartAdd task text |
-| `source_pipeline` | string \| null | no | Override source_pipeline (also parseable from `<pipeline.agent` token in text) |
-| `source_agent` | string \| null | no | Override source_agent |
+| `text` | string | yes | SmartAdd task text. Include a `<source` token for provenance attribution. |
 
-The API injects `<:timestamp` into the stored text (or timestamps an existing `<actor` token). The initial status is derived from any `§status` token, defaulting to `"open"`.
+The API stamps `:timestamp` onto any `<source` token (or injects `<:timestamp` if none present). The initial status is derived from any `§status` token, defaulting to `"open"`.
 
 **Response** `201 Created`
 
 ```json
 {
   "id": "a1b2c3d4-...",
-  "text": "Deploy release !1 #ops ^tomorrow <:2026-03-30T14:00:00Z",
+  "text": "Deploy release !1 #ops ^tomorrow <cli.claude-code.ennui2342:2026-03-30T14:00:00Z",
   "name": "Deploy release",
   "status": "open",
   "due": "2026-03-09T00:00:00+00:00",
@@ -120,8 +128,6 @@ The API injects `<:timestamp` into the stored text (or timestamps an existing `<
   "location": null,
   "assignee_agent": null,
   "assignee_human": null,
-  "source_pipeline": "ci",
-  "source_agent": "builder",
   "created_at": "2026-03-30T14:00:00+00:00",
   "completed_at": null
 }
@@ -191,7 +197,7 @@ Update a task. Only provided fields are changed. Omitted fields are left unchang
 
 | Field | Type | Description |
 |---|---|---|
-| `text` | string \| null | New SmartAdd text. All derived fields (`priority`, `tags`, `due`, etc.) are re-parsed. If no `<` token is present, `source_pipeline` and `source_agent` are preserved. |
+| `text` | string \| null | New SmartAdd text. All derived fields (`priority`, `tags`, `due`, etc.) are re-parsed from the new text. |
 | `status` | string \| null | `"open"`, `"wait"`, `"started"`, or `"closed"`. The API updates `§status` and `>:timestamp` tokens in the stored text accordingly. Setting to `"closed"` sets `completed_at` to now; `"open"` clears it. |
 
 **Response** `200 OK` — updated [Task](#task) object.
@@ -249,23 +255,6 @@ List all locations across non-closed tasks, with counts.
 ```
 
 Ordered alphabetically by location name.
-
----
-
-### GET /pipelines
-
-List all source pipelines across non-closed tasks, with task counts.
-
-**Response** `200 OK`
-
-```json
-[
-  {"pipeline": "ci", "count": 42},
-  {"pipeline": "rtm", "count": 1020}
-]
-```
-
-Ordered alphabetically by pipeline name.
 
 ---
 
@@ -393,11 +382,6 @@ curl "http://localhost:8081/tasks?filter=$(echo -n '(!(#waiting))' | base64)"
 
 # Due today OR overdue
 curl "http://localhost:8081/tasks?filter=$(echo -n '(|(^today)(^overdue))' | base64)"
-
-# Waiting OR started tasks
-curl "http://localhost:8081/tasks?filter=$(printf '§wait' | base64)"
-# (§wait and §started are status-scope tokens; for OR, combine with a tag filter:
-#  e.g. §wait #next for waiting tasks tagged "next")
 ```
 
 ---

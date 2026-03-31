@@ -78,13 +78,6 @@ def test_create_no_tokens_has_null_fields(client_with_insert):
     assert data["assignee_human"] is None
 
 
-def test_create_source_pipeline_override(client_with_insert):
-    client, _ = client_with_insert
-    r = client.post("/tasks", json={"text": "From pipeline", "source_pipeline": "rtm", "source_agent": "import"})
-    assert r.json()["source_pipeline"] == "rtm"
-    assert r.json()["source_agent"] == "import"
-
-
 def test_create_name_strips_tokens(client_with_insert):
     client, _ = client_with_insert
     r = client.post("/tasks", json={"text": "Buy milk !1 #shopping @store"})
@@ -213,15 +206,6 @@ def test_update_preserves_created_at(client_with_insert):
     client.patch(f"/tasks/{task_id}", json={"text": "New text"})
     updated = client.get(f"/tasks/{task_id}").json()
     assert updated["created_at"] == original["created_at"]
-
-
-def test_update_preserves_source_when_no_src_token(client_with_insert):
-    client, insert = client_with_insert
-    task_id = insert("Task <rtm.import")
-    client.patch(f"/tasks/{task_id}", json={"text": "Updated text no source"})
-    updated = client.get(f"/tasks/{task_id}").json()
-    assert updated["source_pipeline"] == "rtm"
-    assert updated["source_agent"] == "import"
 
 
 def test_update_text_and_status_combined(client_with_insert):

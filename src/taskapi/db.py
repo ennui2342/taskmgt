@@ -80,11 +80,11 @@ async def db_get_task(task_id: str) -> dict | None:
 async def db_create_task(row: dict) -> dict:
     db = await _get_db()
     await db.execute(
-        "INSERT INTO tasks VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO tasks VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
         [row[k] for k in (
             "id", "text", "status", "due", "priority", "duration", "tags",
             "location", "assignee_agent", "assignee_human",
-            "source_pipeline", "source_agent", "created_at", "completed_at",
+            "created_at", "completed_at",
         )],
     )
     await db.commit()
@@ -134,18 +134,6 @@ async def db_locations() -> list[dict]:
     async with db.execute(sql) as cur:
         rows = await cur.fetchall()
     return [{"location": r[0], "count": r[1]} for r in rows]
-
-
-async def db_pipelines() -> list[dict]:
-    sql = (
-        "SELECT source_pipeline, COUNT(*) AS count FROM tasks "
-        "WHERE status!='closed' AND source_pipeline IS NOT NULL "
-        "GROUP BY source_pipeline ORDER BY source_pipeline"
-    )
-    db = await _get_db()
-    async with db.execute(sql) as cur:
-        rows = await cur.fetchall()
-    return [{"pipeline": r[0], "count": r[1]} for r in rows]
 
 
 async def db_counts() -> dict:

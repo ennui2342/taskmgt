@@ -12,7 +12,10 @@ export default function SmartAddBar({ seed = '' }) {
     // Append seed tokens not already present in the text
     const seedTokens = seed.split(/\s+/).filter(Boolean)
     const extra = seedTokens.filter(tok => !trimmed.includes(tok)).join(' ')
-    await createTask.mutateAsync(extra ? `${trimmed} ${extra}` : trimmed)
+    const withExtra = extra ? `${trimmed} ${extra}` : trimmed
+    // Append provenance token if not already present
+    const final = withExtra.split('\n')[0].includes('<') ? withExtra : `${withExtra} <web.taskmgt`
+    await createTask.mutateAsync(final)
     setText('')
   }
 

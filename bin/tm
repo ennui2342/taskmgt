@@ -1,0 +1,10 @@
+#!/usr/bin/env python3
+"""tm — Task management CLI for the taskmgt API.
+
+This is a thin shebang wrapper. The implementation lives in src/taskcli/.
+Install via: pip install -e ".[cli]"
+"""
+from taskcli import main
+
+if __name__ == "__main__":
+    main()

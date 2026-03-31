@@ -1,6 +1,6 @@
-"""Unit tests for parse_text and strip_tokens — Phase 1 (red until parser.py updated)."""
+"""Unit tests for parse_text, inject_source_timestamp, and strip_tokens."""
 import pytest
-from taskapi.parser import parse_text, strip_tokens
+from taskapi.parser import inject_source_timestamp, parse_text, strip_tokens
 
 
 # ── §status token ─────────────────────────────────────────────────────────────
@@ -43,29 +43,27 @@ def test_parse_completed_at_only_on_first_line():
     assert r["completed_at"] is None
 
 
-# ── < source token with timestamp ─────────────────────────────────────────────
+# ── inject_source_timestamp ───────────────────────────────────────────────────
 
-def test_parse_source_with_timestamp():
-    r = parse_text("Task <rtm.import:2026-03-30T14:00:00+00:00")
-    assert r["source_pipeline"] == "rtm"
-    assert r["source_agent"] == "import"
+def test_inject_stamps_existing_source_token():
+    """<source token without timestamp gets stamped."""
+    result = inject_source_timestamp("Task <cli.ennui2342", "2026-03-31T10:00:00+00:00")
+    assert result == "Task <cli.ennui2342:2026-03-31T10:00:00Z"
 
-def test_parse_source_without_timestamp_still_works():
-    """Backward-compatibility: old format <pipeline.agent (no timestamp)."""
-    r = parse_text("Task <rtm.import")
-    assert r["source_pipeline"] == "rtm"
-    assert r["source_agent"] == "import"
+def test_inject_leaves_already_stamped_token():
+    """<source:timestamp already present — leave as-is."""
+    text = "Task <cli.ennui2342:2026-03-31T10:00:00Z"
+    assert inject_source_timestamp(text, "2026-04-01T00:00:00+00:00") == text
 
-def test_parse_source_pipeline_only_with_timestamp():
-    r = parse_text("Task <ci:2026-03-30T14:00:00+00:00")
-    assert r["source_pipeline"] == "ci"
-    assert r["source_agent"] is None
+def test_inject_adds_bare_timestamp_when_no_source():
+    """No <source token — inject <:timestamp."""
+    result = inject_source_timestamp("Task with no source", "2026-03-31T10:00:00+00:00")
+    assert result == "Task with no source <:2026-03-31T10:00:00Z"
 
-def test_parse_source_bare_colon_timestamp():
-    """<:timestamp — no actor (human create), just timestamp."""
-    r = parse_text("Task <:2026-03-30T14:00:00+00:00")
-    assert r["source_pipeline"] is None
-    assert r["source_agent"] is None
+def test_inject_handles_multi_layer_source():
+    """Three-layer provenance string preserved intact."""
+    result = inject_source_timestamp("Task <cli.claude-code.ennui2342", "2026-03-31T10:00:00+00:00")
+    assert result == "Task <cli.claude-code.ennui2342:2026-03-31T10:00:00Z"
 
 
 # ── strip_tokens ──────────────────────────────────────────────────────────────

@@ -38,13 +38,6 @@ def _parse_text(text: str) -> dict:
         else:
             due = raw + "T00:00:00+00:00"
 
-    source_pipeline = None
-    source_agent = None
-    if src_m:
-        parts = src_m.group(1).split(".", 1)
-        source_pipeline = parts[0]
-        source_agent = parts[1] if len(parts) > 1 else None
-
     return {
         "tags": json.dumps(tags),
         "priority": int(prio_m.group(1)) if prio_m else None,
@@ -53,8 +46,6 @@ def _parse_text(text: str) -> dict:
         "assignee_human": human_m.group(1) if human_m else None,
         "assignee_agent": agent_m.group(1) if agent_m else None,
         "duration": dur_m.group(1) if dur_m else None,
-        "source_pipeline": source_pipeline,
-        "source_agent": source_agent,
         "status": status_m.group(1) if status_m else "open",
     }
 
@@ -71,8 +62,6 @@ _CREATE_SQL = """
         location        TEXT,
         assignee_agent  TEXT,
         assignee_human  TEXT,
-        source_pipeline TEXT,
-        source_agent    TEXT,
         created_at      TEXT NOT NULL,
         completed_at    TEXT
     )
@@ -121,8 +110,6 @@ def insert(tmp_path, monkeypatch):
             "location": parsed["location"],
             "assignee_agent": parsed["assignee_agent"],
             "assignee_human": parsed["assignee_human"],
-            "source_pipeline": parsed["source_pipeline"],
-            "source_agent": parsed["source_agent"],
             "created_at": now,
             "completed_at": None,
         }
@@ -130,11 +117,11 @@ def insert(tmp_path, monkeypatch):
         if isinstance(row.get("tags"), list):
             row["tags"] = json.dumps(row["tags"])
         conn.execute(
-            "INSERT INTO tasks VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO tasks VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
             [row[k] for k in (
                 "id", "text", "status", "due", "priority", "duration", "tags",
                 "location", "assignee_agent", "assignee_human",
-                "source_pipeline", "source_agent", "created_at", "completed_at",
+                "created_at", "completed_at",
             )],
         )
         conn.commit()
@@ -168,8 +155,6 @@ def client_with_insert(tmp_path, monkeypatch):
             "location": parsed["location"],
             "assignee_agent": parsed["assignee_agent"],
             "assignee_human": parsed["assignee_human"],
-            "source_pipeline": parsed["source_pipeline"],
-            "source_agent": parsed["source_agent"],
             "created_at": now,
             "completed_at": None,
         }
@@ -177,11 +162,11 @@ def client_with_insert(tmp_path, monkeypatch):
         if isinstance(row.get("tags"), list):
             row["tags"] = json.dumps(row["tags"])
         conn.execute(
-            "INSERT INTO tasks VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO tasks VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
             [row[k] for k in (
                 "id", "text", "status", "due", "priority", "duration", "tags",
                 "location", "assignee_agent", "assignee_human",
-                "source_pipeline", "source_agent", "created_at", "completed_at",
+                "created_at", "completed_at",
             )],
         )
         conn.commit()

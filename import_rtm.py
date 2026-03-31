@@ -109,8 +109,6 @@ def convert(task: dict, loc_map: dict, list_map: dict, notes_map: dict) -> dict:
         "location": location,
         "assignee_agent": None,
         "assignee_human": None,
-        "source_pipeline": "rtm",
-        "source_agent": "import",
         "created_at": created_at,
         "completed_at": completed_at,
     }
@@ -240,14 +238,12 @@ def main():
             cur = db.execute(
                 """INSERT OR IGNORE INTO tasks
                    (id, text, status, due, priority, duration, tags, location,
-                    assignee_agent, assignee_human, source_pipeline, source_agent,
-                    created_at, completed_at)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    assignee_agent, assignee_human, created_at, completed_at)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
                     row["id"], row["text"], row["status"], row["due"],
                     row["priority"], row["duration"], row["tags"], row["location"],
                     row["assignee_agent"], row["assignee_human"],
-                    row["source_pipeline"], row["source_agent"],
                     row["created_at"], row["completed_at"],
                 ),
             )

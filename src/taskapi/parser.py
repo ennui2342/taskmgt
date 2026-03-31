@@ -104,17 +104,6 @@ def parse_text(text: str) -> dict:
     status_m = _STATUS_RE.search(first_line)
     complete_m = _COMPLETE_RE.search(first_line)
 
-    # Source: <pipeline.agent:timestamp or <pipeline.agent (legacy, no timestamp)
-    source_pipeline = None
-    source_agent = None
-    has_source_token = src_m is not None
-    if src_m:
-        # Strip optional :timestamp suffix before splitting on .
-        actor = src_m.group(1).split(":", 1)[0]
-        parts = actor.split(".", 1)
-        source_pipeline = parts[0] or None
-        source_agent = parts[1] if len(parts) > 1 else None
-
     # Completion: >actor:timestamp or >:timestamp
     completed_at = None
     if complete_m:
@@ -132,9 +121,6 @@ def parse_text(text: str) -> dict:
         "assignee_human": human_m.group(1) if human_m else None,
         "assignee_agent": agent_m.group(1) if agent_m else None,
         "duration": dur_m.group(1) if dur_m else None,
-        "source_pipeline": source_pipeline,
-        "source_agent": source_agent,
-        "has_source_token": has_source_token,
         "status": status_m.group(1) if status_m else "open",
         "completed_at": completed_at,
     }
