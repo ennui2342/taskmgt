@@ -28,10 +28,11 @@ export const api = {
     create: (text)   => req('/tasks', { method: 'POST', ...json({ text }) }),
     update: (id, text) => req(`/tasks/${id}`, { method: 'PATCH', ...json({ text }) }),
     close:  (id, text) => {
-      const firstLine = (text ?? '').split('\n')[0]
-      const rest = text ? text.slice(firstLine.length) : ''
-      const textWithActor = firstLine.includes('>') ? text : firstLine + ' >web.taskmgt' + rest
-      return req(`/tasks/${id}`, { method: 'PATCH', ...json({ status: 'closed', text: textWithActor }) })
+      const lines = (text ?? '').split('\n')
+      let first = lines[0].replace(/\s*§\S+/g, '').trim() + ' §closed'
+      if (!first.includes('>')) first += ' >web.taskmgt'
+      const finalText = [first, ...lines.slice(1)].join('\n')
+      return req(`/tasks/${id}`, { method: 'PATCH', ...json({ text: finalText }) })
     },
     delete: (id)     => req(`/tasks/${id}`, { method: 'DELETE' }),
   },

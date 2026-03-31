@@ -1,6 +1,6 @@
-"""Unit tests for parse_text, inject_source_timestamp, strip_tokens, and apply_status_to_text."""
+"""Unit tests for parse_text, inject_source_timestamp, strip_tokens, stamp_completion, remove_completion."""
 import pytest
-from taskapi.parser import apply_status_to_text, inject_source_timestamp, parse_text, strip_tokens
+from taskapi.parser import inject_source_timestamp, parse_text, remove_completion, stamp_completion, strip_tokens
 
 
 # ── §status token ─────────────────────────────────────────────────────────────
@@ -66,35 +66,35 @@ def test_inject_handles_multi_layer_source():
     assert result == "Task <cli.claude-code.ennui2342:2026-03-31T10:00:00Z"
 
 
-# ── apply_status_to_text (close provenance) ───────────────────────────────────
+# ── stamp_completion / remove_completion ──────────────────────────────────────
 
 TS = "2026-03-31T10:00:00+00:00"
 TSZ = "2026-03-31T10:00:00Z"
 
-def test_close_stamps_bare_actor_token():
-    """Client-supplied >actor (no timestamp) gets stamped on close."""
-    result = apply_status_to_text("Task >cli.claude-code.ennui2342", "closed", TS)
-    assert f">cli.claude-code.ennui2342:{TSZ}" in result
+def test_stamp_bare_actor_token():
+    """Client-supplied >actor (no timestamp) gets stamped."""
+    assert f">cli.claude-code.ennui2342:{TSZ}" in stamp_completion("Task >cli.claude-code.ennui2342", TS)
 
-def test_close_stamps_web_actor_token():
-    result = apply_status_to_text("Task >web.taskmgt", "closed", TS)
-    assert f">web.taskmgt:{TSZ}" in result
+def test_stamp_web_actor_token():
+    assert f">web.taskmgt:{TSZ}" in stamp_completion("Task §closed >web.taskmgt", TS)
 
-def test_close_fallback_bare_timestamp_when_no_actor():
-    """No >actor token — server writes >:timestamp as fallback."""
-    result = apply_status_to_text("Task", "closed", TS)
-    assert f">:{TSZ}" in result
+def test_stamp_fallback_when_no_actor():
+    """No >actor token — injects >:timestamp."""
+    assert f">:{TSZ}" in stamp_completion("Task §closed", TS)
 
-def test_close_replaces_timestamp_preserves_actor():
+def test_stamp_preserves_actor_updates_timestamp():
     """Re-closing: actor preserved, timestamp updated."""
-    result = apply_status_to_text("Task >cli.ennui2342:2025-01-01T00:00:00Z", "closed", TS)
+    result = stamp_completion("Task §closed >cli.ennui2342:2025-01-01T00:00:00Z", TS)
     assert f">cli.ennui2342:{TSZ}" in result
     assert "2025-01-01" not in result
 
-def test_close_actor_and_status_token_both_written():
-    result = apply_status_to_text("Task >web.taskmgt", "closed", TS)
-    assert "§closed" in result
-    assert f">web.taskmgt:{TSZ}" in result
+def test_remove_completion_strips_token():
+    assert ">" not in remove_completion("Task §wait >cli.ennui2342:2026-03-31T10:00:00Z")
+
+def test_remove_completion_preserves_annotations():
+    result = remove_completion("Task >:2026-03-31T10:00:00Z\n* a note")
+    assert ">" not in result.split("\n")[0]
+    assert "* a note" in result
 
 
 # ── strip_tokens ──────────────────────────────────────────────────────────────

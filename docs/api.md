@@ -187,21 +187,23 @@ Get a single task by ID.
 
 ### PATCH /tasks/{id}
 
-Update a task. Only provided fields are changed. Omitted fields are left unchanged.
+Update a task by sending the full new SmartAdd text. All derived fields are re-parsed from the text.
 
 **Request body**
 
 ```json
 {
-  "text": "Deploy release !2 #ops #infra",
-  "status": "closed"
+  "text": "Deploy release !2 #ops #infra §closed >cli.claude-code.ennui2342"
 }
 ```
 
 | Field | Type | Description |
 |---|---|---|
-| `text` | string \| null | New SmartAdd text. All derived fields (`priority`, `tags`, `due`, etc.) are re-parsed from the new text. |
-| `status` | string \| null | `"open"`, `"wait"`, `"started"`, or `"closed"`. The API updates `§status` and `>:timestamp` tokens in the stored text accordingly. Setting to `"closed"` sets `completed_at` to now; `"open"` clears it. |
+| `text` | string | Full SmartAdd text. All fields (`priority`, `tags`, `status`, `due`, etc.) are derived from tokens. Embed `§status` to set status; embed `>actor` for close provenance. |
+
+**Server behaviour on close**: if `§closed` is present, the server stamps `:timestamp` onto any bare `>actor` token (or injects `>:timestamp` if none present) and sets `completed_at`.
+
+**Server behaviour on reopen**: if the task was previously closed and the new text does not contain `§closed`, the server removes any `>completion` token and clears `completed_at`.
 
 **Response** `200 OK` — updated [Task](#task) object.
 

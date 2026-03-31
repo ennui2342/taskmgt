@@ -238,33 +238,43 @@ def cmd_add(args) -> None:
         out_json(task)
 
 
+def _set_status_in_text(text: str, status: str) -> str:
+    """Replace or add §status token in the first line. Open removes it (default)."""
+    import re
+    lines = text.split("\n", 1)
+    first = re.sub(r"\s*§\S+", "", lines[0]).strip()
+    if status != "open":
+        first = first + f" §{status}"
+    tail = ("\n" + lines[1]) if len(lines) > 1 else ""
+    return first + tail
+
+
 # ── Command: update ────────────────────────────────────────────────────────────
 def cmd_update(args) -> None:
     if not args.text and not args.status and not args.close:
         err("Provide at least one of --text, --status, or --close")
 
-    body = {}
-    if args.text:
-        body["text"] = args.text
-    if args.close:
-        body["status"] = "closed"
-    elif args.status:
-        body["status"] = args.status
+    target_status = "closed" if args.close else args.status
 
     with make_client(args) as client:
         task_id = resolve_id(client, args.id)
-        # Inject completion provenance when closing
-        if body.get("status") == "closed":
+
+        if target_status:
+            # Need existing text to manipulate §status and >actor tokens
             r_get = api_call(client.get, f"/tasks/{task_id}")
             existing = handle_response(r_get)
-            text = body.get("text") or existing["text"]
-            first_line = text.split("\n")[0]
-            if ">" not in first_line:
-                provenance = args.provenance or f"cli.{os.environ.get('USER', 'unknown')}"
-                rest = text[len(first_line):]
-                text = first_line + f" >{provenance}" + rest
-            body["text"] = text
-        r = api_call(client.patch, f"/tasks/{task_id}", json=body)
+            text = args.text or existing["text"]
+            text = _set_status_in_text(text, target_status)
+            if target_status == "closed":
+                first_line = text.split("\n")[0]
+                if ">" not in first_line:
+                    provenance = args.provenance or f"cli.{os.environ.get('USER', 'unknown')}"
+                    rest = text[len(first_line):]
+                    text = first_line + f" >{provenance}" + rest
+        else:
+            text = args.text
+
+        r = api_call(client.patch, f"/tasks/{task_id}", json={"text": text})
     task = handle_response(r)
 
     if args.format == "table":

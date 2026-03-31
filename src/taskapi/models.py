@@ -8,8 +8,7 @@ class TaskCreate(BaseModel):
 
 
 class TaskPatch(BaseModel):
-    text: str | None = None
-    status: str | None = None
+    text: str
 
 
 class Task(BaseModel):

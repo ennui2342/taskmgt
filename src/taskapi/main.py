@@ -34,7 +34,7 @@ from .models import (
     TaskPatch,
 )
 from .mqtt import mqtt_publish
-from .parser import apply_status_to_text, inject_source_timestamp, parse_text, strip_tokens
+from .parser import inject_source_timestamp, parse_text, remove_completion, stamp_completion, strip_tokens
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -126,44 +126,37 @@ async def update_task(task_id: str, body: TaskPatch):
     if existing is None:
         raise HTTPException(404)
 
-    fields: dict = {}
     now = datetime.now(timezone.utc).isoformat()
+    text = body.text
+    parsed = parse_text(text)
+    new_status = parsed["status"]
 
-    # Start from body.text if provided, else existing text
-    working_text = body.text if body.text is not None else existing["text"]
-    text_mutated = False
+    if new_status == "closed":
+        text = stamp_completion(text, now)
+        completed_at = now
+    elif existing["status"] == "closed":
+        text = remove_completion(text)
+        completed_at = None
+    else:
+        completed_at = existing.get("completed_at")
 
-    if body.status == "closed":
-        working_text = apply_status_to_text(working_text, "closed", now)
-        fields["status"] = "closed"
-        fields["completed_at"] = now
-        text_mutated = True
-    elif body.status in ("open", "wait", "started"):
-        working_text = apply_status_to_text(working_text, body.status, now)
-        fields["status"] = body.status
-        fields["completed_at"] = None
-        text_mutated = True
-
-    if body.text is not None or text_mutated:
-        parsed = parse_text(working_text)
-        fields["text"] = working_text
-        fields["due"] = parsed["due"]
-        fields["priority"] = parsed["priority"]
-        fields["duration"] = parsed["duration"]
-        fields["tags"] = parsed["tags"]
-        fields["location"] = parsed["location"]
-        fields["assignee_agent"] = parsed["assignee_agent"]
-        fields["assignee_human"] = parsed["assignee_human"]
-        # Sync status from §token in text if not overridden by explicit body.status
-        if "status" not in fields:
-            fields["status"] = parsed["status"]
-            if parsed["status"] != "closed":
-                fields["completed_at"] = None
+    parsed = parse_text(text)
+    fields = {
+        "text": text,
+        "status": parsed["status"],
+        "due": parsed["due"],
+        "priority": parsed["priority"],
+        "duration": parsed["duration"],
+        "tags": parsed["tags"],
+        "location": parsed["location"],
+        "assignee_agent": parsed["assignee_agent"],
+        "assignee_human": parsed["assignee_human"],
+        "completed_at": completed_at,
+    }
 
     await db_update_task(task_id, fields)
     row = await db_get_task(task_id)
-    if body.text is not None or text_mutated:
-        mqtt_publish("tasks/read", working_text)
+    mqtt_publish("tasks/read", text)
     return _row_to_task(row)
 
 

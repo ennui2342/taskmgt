@@ -46,40 +46,39 @@ def inject_source_timestamp(text: str, now: str) -> str:
     return "\n".join([first] + ([lines[1]] if len(lines) > 1 else []))
 
 
-def apply_status_to_text(text: str, status: str, now: str) -> str:
-    """Rewrite status/completion tokens in the first line to reflect a status change."""
+def stamp_completion(text: str, now: str) -> str:
+    """Stamp the completion timestamp onto the first line.
+
+    Called by the server when §closed is detected in incoming text.
+    - If >actor present (no timestamp): stamps it → >actor:timestamp
+    - If >actor:oldts present: preserves actor, updates timestamp
+    - If no > token: injects >:timestamp as fallback
+    """
     ts = _token_ts(now)
     lines = text.split("\n", 1)
     first = lines[0]
     tail = ("\n" + lines[1]) if len(lines) > 1 else ""
+    m = _COMPLETE_RE.search(first)
+    if m:
+        raw = m.group(1)
+        if ":" in raw:
+            actor = raw[: raw.index(":")]
+            first = _COMPLETE_RE.sub(f">{actor}:{ts}", first)
+        else:
+            first = first[: m.end()] + ":" + ts + first[m.end() :]
+    else:
+        first = first + f" >:{ts}"
+    return first + tail
 
-    if status == "closed":
-        if _STATUS_RE.search(first):
-            first = _STATUS_RE.sub("§closed", first)
-        else:
-            first = first + " §closed"
-        m = _COMPLETE_RE.search(first)
-        if m:
-            raw = m.group(1)
-            if ":" in raw:
-                # Already has timestamp — preserve actor, update timestamp
-                actor = raw[: raw.index(":")]
-                first = _COMPLETE_RE.sub(f">{actor}:{ts}", first)
-            else:
-                # Bare actor token (client-supplied) — stamp the timestamp
-                first = first[: m.end()] + ":" + ts + first[m.end() :]
-        else:
-            first = first + f" >:{ts}"
-    elif status == "open":
-        first = _STATUS_SUB_RE.sub("", first).strip()
-        first = _COMPLETE_SUB_RE.sub("", first).strip()
-    elif status in ("wait", "started"):
-        if _STATUS_RE.search(first):
-            first = _STATUS_RE.sub(f"§{status}", first)
-        else:
-            first = first + f" §{status}"
-        first = _COMPLETE_SUB_RE.sub("", first).strip()
 
+def remove_completion(text: str) -> str:
+    """Remove the completion token from the first line.
+
+    Called by the server when a task transitions away from closed.
+    """
+    lines = text.split("\n", 1)
+    first = _COMPLETE_SUB_RE.sub("", lines[0]).strip()
+    tail = ("\n" + lines[1]) if len(lines) > 1 else ""
     return first + tail
 
 
