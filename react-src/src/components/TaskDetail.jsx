@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { stripTokens, annotations } from '../api'
-import { useUpdateTask } from '../hooks'
+import { useUpdateTask, useDeleteTask } from '../hooks'
 
 function Chip({ children, color }) {
   const colors = {
@@ -64,11 +64,13 @@ function EditForm({ selected, onDone }) {
   )
 }
 
-export default function TaskDetail({ selected }) {
+export default function TaskDetail({ selected, onDeselect }) {
   const [editing, setEditing] = useState(false)
+  const [confirming, setConfirming] = useState(false)
+  const deleteTask = useDeleteTask()
 
-  // Exit edit mode when selection changes
-  useEffect(() => { setEditing(false) }, [selected?.id])
+  // Reset state when selection changes
+  useEffect(() => { setEditing(false); setConfirming(false) }, [selected?.id])
 
   if (!selected) {
     return (
@@ -88,12 +90,40 @@ export default function TaskDetail({ selected }) {
         <h2 className="text-base font-semibold leading-snug text-gray-100">
           {stripTokens(selected.text)}
         </h2>
-        <button
-          className="btn-edit flex-shrink-0 rounded px-3 py-1 text-xs text-gray-400 ring-1 ring-gray-600 hover:bg-gray-700 hover:text-gray-100"
-          onClick={() => setEditing(true)}
-        >
-          Edit
-        </button>
+        <div className="flex flex-shrink-0 items-center gap-2">
+          {!confirming ? (
+            <>
+              <button
+                className="btn-edit rounded px-3 py-1 text-xs text-gray-400 ring-1 ring-gray-600 hover:bg-gray-700 hover:text-gray-100"
+                onClick={() => setEditing(true)}
+              >
+                Edit
+              </button>
+              <button
+                className="btn-delete rounded px-3 py-1 text-xs text-gray-400 ring-1 ring-gray-600 hover:bg-red-900/50 hover:text-red-300 hover:ring-red-800"
+                onClick={() => setConfirming(true)}
+              >
+                Delete
+              </button>
+            </>
+          ) : (
+            <>
+              <span className="text-xs text-gray-400">Delete?</span>
+              <button
+                className="btn-delete-confirm rounded bg-red-700 px-3 py-1 text-xs font-medium text-white hover:bg-red-600"
+                onClick={async () => { await deleteTask.mutateAsync(selected.id); onDeselect?.() }}
+              >
+                Yes
+              </button>
+              <button
+                className="btn-cancel rounded px-3 py-1 text-xs text-gray-400 ring-1 ring-gray-600 hover:bg-gray-700"
+                onClick={() => setConfirming(false)}
+              >
+                Cancel
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       <dl className="detail-props divide-y divide-gray-800">

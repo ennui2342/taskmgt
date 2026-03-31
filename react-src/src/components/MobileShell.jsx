@@ -3,19 +3,17 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import MainPanel from './MainPanel'
 import TaskDetail from './TaskDetail'
-import { useTask, useCloseTask, useDeleteTask } from '../hooks'
+import { useTask, useCloseTask } from '../hooks'
 
 export default function MobileShell() {
   const [pane, setPane] = useState(0)
   const [selectedId, setSelectedId] = useState(null)
-  const [confirmDelete, setConfirmDelete] = useState(false)
   const location = useLocation()
   const prevPath = useRef(location.pathname + location.search)
   const containerRef = useRef(null)
   const touchStartX = useRef(0)
   const touchStartY = useRef(0)
   const closeTask = useCloseTask()
-  const deleteTask = useDeleteTask()
 
   const { data: selected } = useTask(selectedId)
 
@@ -31,7 +29,6 @@ export default function MobileShell() {
 
   function handleTaskSelect(id) {
     setSelectedId(id)
-    setConfirmDelete(false)
     setPane(2)
   }
 
@@ -84,14 +81,6 @@ export default function MobileShell() {
 
         {/* Pane 1: Task list */}
         <div className="w-screen h-full flex flex-col overflow-hidden">
-          <div className="flex h-12 flex-shrink-0 items-center border-b border-gray-700 px-3">
-            <button
-              onClick={() => setPane(0)}
-              className="rounded px-2 py-1 text-sm text-gray-400 hover:text-gray-100"
-            >
-              ← Menu
-            </button>
-          </div>
           <div className="flex flex-col flex-1 overflow-hidden">
             <Routes>
               <Route path="/" element={<Navigate to="/view/all" replace />} />
@@ -119,50 +108,17 @@ export default function MobileShell() {
         {/* Pane 2: Task detail */}
         <div className="w-screen h-full flex flex-col overflow-hidden">
           <div className="flex h-12 flex-shrink-0 items-center gap-2 border-b border-gray-700 px-3">
-            <button
-              onClick={() => setPane(1)}
-              className="rounded px-2 py-1 text-sm text-gray-400 hover:text-gray-100"
-            >
-              ← Tasks
-            </button>
-            {selected && !confirmDelete && (
-              <>
-                {selected.status !== 'closed' && (
-                  <button
-                    onClick={async () => { await closeTask.mutateAsync({ id: selected.id, text: selected.text }); handleDeselect() }}
-                    className="btn-close rounded bg-indigo-700 px-3 py-1 text-xs font-medium text-white hover:bg-indigo-600"
-                  >
-                    ✓ Close
-                  </button>
-                )}
-                <button
-                  onClick={() => setConfirmDelete(true)}
-                  className="btn-delete ml-auto rounded px-3 py-1 text-xs text-gray-400 hover:bg-red-900/50 hover:text-red-300"
-                >
-                  Delete
-                </button>
-              </>
-            )}
-            {selected && confirmDelete && (
-              <>
-                <span className="ml-auto text-sm text-gray-400">Delete?</span>
-                <button
-                  onClick={async () => { await deleteTask.mutateAsync(selected.id); handleDeselect() }}
-                  className="btn-delete-confirm rounded bg-red-700 px-3 py-1 text-xs font-medium text-white hover:bg-red-600"
-                >
-                  Yes, delete
-                </button>
-                <button
-                  onClick={() => setConfirmDelete(false)}
-                  className="rounded px-2 py-1 text-xs text-gray-400 hover:bg-gray-700"
-                >
-                  Cancel
-                </button>
-              </>
+            {selected && selected.status !== 'closed' && (
+              <button
+                onClick={async () => { await closeTask.mutateAsync({ id: selected.id, text: selected.text }); handleDeselect() }}
+                className="btn-close rounded bg-indigo-700 px-3 py-1 text-xs font-medium text-white hover:bg-indigo-600"
+              >
+                ✓ Close
+              </button>
             )}
           </div>
           <div className="flex-1 overflow-y-auto">
-            <TaskDetail selected={selected} />
+            <TaskDetail selected={selected} onDeselect={handleDeselect} />
           </div>
         </div>
       </div>

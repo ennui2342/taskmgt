@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import { useCloseTask, useDeleteTask } from '../hooks'
+import { useCloseTask } from '../hooks'
 
 function ToggleSwitch({ checked, onChange }) {
   return (
@@ -19,12 +18,7 @@ function ToggleSwitch({ checked, onChange }) {
 }
 
 export default function ActionBar({ selected, activeFilter, onDeselect, showClosed, onToggleClosed, hideClosedToggle }) {
-  const [confirming, setConfirming] = useState(false)
-  const closeTask  = useCloseTask()
-  const deleteTask = useDeleteTask()
-
-  // Reset confirm state when selection changes
-  if (!selected && confirming) setConfirming(false)
+  const closeTask = useCloseTask()
 
   if (!selected) {
     return (
@@ -44,29 +38,6 @@ export default function ActionBar({ selected, activeFilter, onDeselect, showClos
     )
   }
 
-  if (confirming) {
-    return (
-      <div className="flex h-12 items-center gap-2 border-b border-gray-700 px-3">
-        <span className="text-sm text-gray-400">Delete this task?</span>
-        <button
-          className="btn-delete-confirm ml-auto rounded bg-red-700 px-3 py-1 text-xs font-medium text-white hover:bg-red-600"
-          onClick={async () => {
-            await deleteTask.mutateAsync(selected.id)
-            onDeselect()
-          }}
-        >
-          Yes, delete
-        </button>
-        <button
-          className="rounded px-3 py-1 text-xs text-gray-400 hover:bg-gray-700 hover:text-gray-100"
-          onClick={() => setConfirming(false)}
-        >
-          Cancel
-        </button>
-      </div>
-    )
-  }
-
   return (
     <div className="flex h-12 items-center gap-2 border-b border-gray-700 px-3">
       {selected.status !== 'closed' && (
@@ -80,12 +51,6 @@ export default function ActionBar({ selected, activeFilter, onDeselect, showClos
           ✓ Close task
         </button>
       )}
-      <button
-        className="btn-delete ml-auto rounded px-3 py-1 text-xs text-gray-400 hover:bg-red-900/50 hover:text-red-300"
-        onClick={() => setConfirming(true)}
-      >
-        Delete
-      </button>
     </div>
   )
 }
