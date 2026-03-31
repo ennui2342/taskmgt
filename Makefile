@@ -26,6 +26,8 @@ test-api: ## Run API unit tests only
 install-cli: ## Install the tm CLI and symlink to /usr/local/bin
 	pip3 install -e ".[cli]"
 	ln -sf "$$(python3 -c 'import sysconfig; print(sysconfig.get_path("scripts"))')/tm" /usr/local/bin/tm
+        mkdir ~/.claude/skills/tm
+        cp skills/SKILL.md ~/.claude/skills/tm/
 	@echo "tm installed: $$(which tm)"
 
 # ── Ops ───────────────────────────────────────────────────────────────────────
