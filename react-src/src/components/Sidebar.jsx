@@ -151,8 +151,9 @@ export default function Sidebar() {
 
   return (
     <nav className="flex w-full flex-shrink-0 flex-col gap-0.5 overflow-y-auto bg-gray-950 px-2 py-4 md:w-52">
-      <div className="mb-4 px-3 text-lg font-semibold tracking-tight text-indigo-400">
-        aswarm
+      <div className="mb-4 px-3">
+        <div className="text-lg font-semibold tracking-tight text-indigo-400">taskmgr</div>
+        <div className="text-xs text-gray-500">{import.meta.env.VITE_APP_VERSION || 'dev'}</div>
       </div>
 
       <NavItem to="/view/inbox"   label="Inbox"     badge={counts.inbox}   />
