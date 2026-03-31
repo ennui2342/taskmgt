@@ -73,7 +73,7 @@ export default function ActionBar({ selected, activeFilter, onDeselect, showClos
         <button
           className="btn-close rounded bg-indigo-700 px-3 py-1 text-xs font-medium text-white hover:bg-indigo-600"
           onClick={async () => {
-            await closeTask.mutateAsync(selected.id)
+            await closeTask.mutateAsync({ id: selected.id, text: selected.text })
             onDeselect()
           }}
         >

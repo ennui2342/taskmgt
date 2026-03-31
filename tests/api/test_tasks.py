@@ -333,11 +333,21 @@ def test_close_injects_closed_status_token(client_with_insert):
 
 
 def test_close_injects_completion_timestamp(client_with_insert):
-    """PATCH status=closed writes >:timestamp into task text."""
+    """PATCH status=closed with no >actor falls back to >:timestamp."""
     client, insert = client_with_insert
     task_id = insert("Some task")
     r = client.patch(f"/tasks/{task_id}", json={"status": "closed"})
     assert ">:" in r.json()["text"]
+
+
+def test_close_stamps_actor_token_from_text(client_with_insert):
+    """PATCH status=closed with >actor in text stamps >actor:timestamp."""
+    client, insert = client_with_insert
+    task_id = insert("Some task")
+    r = client.patch(f"/tasks/{task_id}", json={"status": "closed", "text": "Some task >cli.claude-code.ennui2342"})
+    text = r.json()["text"]
+    assert ">cli.claude-code.ennui2342:" in text
+    assert ">:" not in text
 
 
 def test_close_replaces_existing_status_token(client_with_insert):
@@ -351,11 +361,11 @@ def test_close_replaces_existing_status_token(client_with_insert):
 
 
 def test_reopen_removes_closed_tokens(client_with_insert):
-    """Patching status=open removes §closed and >: tokens from text."""
+    """Patching status=open removes §closed and completion tokens from text."""
     client, insert = client_with_insert
     task_id = insert("Some task")
     client.patch(f"/tasks/{task_id}", json={"status": "closed"})
     r = client.patch(f"/tasks/{task_id}", json={"status": "open"})
     text = r.json()["text"]
     assert "§closed" not in text
-    assert ">:" not in text
+    assert ">" not in text

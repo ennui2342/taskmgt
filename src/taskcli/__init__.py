@@ -253,6 +253,17 @@ def cmd_update(args) -> None:
 
     with make_client(args) as client:
         task_id = resolve_id(client, args.id)
+        # Inject completion provenance when closing
+        if body.get("status") == "closed":
+            r_get = api_call(client.get, f"/tasks/{task_id}")
+            existing = handle_response(r_get)
+            text = body.get("text") or existing["text"]
+            first_line = text.split("\n")[0]
+            if ">" not in first_line:
+                provenance = args.provenance or f"cli.{os.environ.get('USER', 'unknown')}"
+                rest = text[len(first_line):]
+                text = first_line + f" >{provenance}" + rest
+            body["text"] = text
         r = api_call(client.patch, f"/tasks/{task_id}", json=body)
     task = handle_response(r)
 

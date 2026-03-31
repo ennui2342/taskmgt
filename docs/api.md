@@ -51,7 +51,7 @@ The task text is the **source of truth**: all indexed DB fields are derived from
 | `++human` | assignee_human | `Review PR ++alice` |
 | `§status` | task status | `Blocked §wait` |
 | `<source:timestamp` | creation provenance | `Task <cli.claude-code.ennui2342:2026-03-30T14:00:00Z` |
-| `>actor:timestamp` | completion provenance | `Done >:2026-03-30T15:00:00Z` |
+| `>actor:timestamp` | completion provenance | `Done >cli.ennui2342:2026-03-30T15:00:00Z` |
 
 **Due date** accepts ISO dates (`2026-04-15`), ISO datetimes, or natural language understood by [dateparser](https://dateparser.readthedocs.io/) (`tomorrow`, `next friday`, `in 3 days`).
 
@@ -61,21 +61,24 @@ The task text is the **source of truth**: all indexed DB fields are derived from
 
 Provenance is embedded directly in the task text by the client using the `<source` token. The API stamps the server-side timestamp on creation.
 
-**Convention** — three-layer dot-separated namespace:
+**Convention** — three-layer dot-separated namespace (`type.tool.user`):
 
-| Source | Example token |
-|---|---|
-| CLI (direct human use) | `<cli.ennui2342` |
-| CLI (via Claude Code agent) | `<cli.claude-code.ennui2342` |
-| Web frontend | `<web.taskmgt` |
-| aswarm pipeline | `<aswarm.researcher.analyse` |
+| Source | Creation token | Completion token |
+|---|---|---|
+| CLI (direct human use) | `<cli.ennui2342` | `>cli.ennui2342` |
+| CLI (via Claude Code agent) | `<cli.claude-code.ennui2342` | `>cli.claude-code.ennui2342` |
+| Web frontend | `<web.taskmgt` | `>web.taskmgt` |
+| aswarm pipeline | `<aswarm.researcher.analyse` | `>aswarm.researcher.analyse` |
 
-**Client responsibility**: embed `<source` in the task text before sending. The API will stamp `:timestamp` onto it.
+**Client responsibility**: embed the provenance token in the task text before sending. The API stamps `:timestamp` onto it.
+
+- **On create**: embed `<source` in the text. The API stamps `:timestamp` → `<source:2026-03-30T14:00:00Z`. If absent, injects `<:timestamp`.
+- **On close**: embed `>actor` in the text alongside `status: "closed"`. The API stamps `:timestamp` → `>actor:2026-03-30T15:00:00Z`. If absent, injects `>:timestamp` as fallback.
 
 **API behaviour**:
-- **On create**: if `<source` is present, stamps `:timestamp` → `<source:2026-03-30T14:00:00Z`. If no `<` token, injects `<:timestamp` (no source attribution).
-- **On close** (`PATCH status=closed`): `§closed` replaces any existing `§status` token, and `>:timestamp` replaces any existing completion token.
-- **On status change** (to `open`, `wait`, or `started`): the `§status` token is replaced. `>:timestamp` is removed when reopening.
+- **On create**: if `<source` is present without timestamp, stamps it. If no `<` token, injects `<:timestamp` (no source attribution).
+- **On close** (`PATCH status=closed`): `§closed` replaces any existing `§status` token. If `>actor` is present (no timestamp), stamps it. If `>actor:oldts` exists, preserves actor and updates timestamp. If no `>` token, injects `>:timestamp` as fallback.
+- **On status change** (to `open`, `wait`, or `started`): the `§status` token is replaced. The `>` completion token is removed when reopening.
 
 This means the text is always a self-contained record of the task's lifecycle.
 

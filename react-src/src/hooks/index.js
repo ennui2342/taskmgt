@@ -89,7 +89,7 @@ export function useUpdateTask() {
 export function useCloseTask() {
   const invalidate = useInvalidate('tasks', 'counts')
   return useMutation({
-    mutationFn: (id) => api.tasks.close(id),
+    mutationFn: ({ id, text }) => api.tasks.close(id, text),
     onSuccess:  invalidate,
   })
 }

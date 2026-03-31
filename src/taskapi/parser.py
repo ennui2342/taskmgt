@@ -58,8 +58,16 @@ def apply_status_to_text(text: str, status: str, now: str) -> str:
             first = _STATUS_RE.sub("§closed", first)
         else:
             first = first + " §closed"
-        if _COMPLETE_RE.search(first):
-            first = _COMPLETE_RE.sub(f">:{ts}", first)
+        m = _COMPLETE_RE.search(first)
+        if m:
+            raw = m.group(1)
+            if ":" in raw:
+                # Already has timestamp — preserve actor, update timestamp
+                actor = raw[: raw.index(":")]
+                first = _COMPLETE_RE.sub(f">{actor}:{ts}", first)
+            else:
+                # Bare actor token (client-supplied) — stamp the timestamp
+                first = first[: m.end()] + ":" + ts + first[m.end() :]
         else:
             first = first + f" >:{ts}"
     elif status == "open":

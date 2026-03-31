@@ -27,7 +27,12 @@ export const api = {
     get:    (id)     => req(`/tasks/${id}`),
     create: (text)   => req('/tasks', { method: 'POST', ...json({ text }) }),
     update: (id, text) => req(`/tasks/${id}`, { method: 'PATCH', ...json({ text }) }),
-    close:  (id)     => req(`/tasks/${id}`, { method: 'PATCH', ...json({ status: 'closed' }) }),
+    close:  (id, text) => {
+      const firstLine = (text ?? '').split('\n')[0]
+      const rest = text ? text.slice(firstLine.length) : ''
+      const textWithActor = firstLine.includes('>') ? text : firstLine + ' >web.taskmgt' + rest
+      return req(`/tasks/${id}`, { method: 'PATCH', ...json({ status: 'closed', text: textWithActor }) })
+    },
     delete: (id)     => req(`/tasks/${id}`, { method: 'DELETE' }),
   },
   filters: {

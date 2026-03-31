@@ -129,7 +129,7 @@ export default function MobileShell() {
               <>
                 {selected.status !== 'closed' && (
                   <button
-                    onClick={async () => { await closeTask.mutateAsync(selected.id); handleDeselect() }}
+                    onClick={async () => { await closeTask.mutateAsync({ id: selected.id, text: selected.text }); handleDeselect() }}
                     className="btn-close rounded bg-indigo-700 px-3 py-1 text-xs font-medium text-white hover:bg-indigo-600"
                   >
                     ✓ Close
