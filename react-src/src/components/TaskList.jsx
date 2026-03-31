@@ -11,6 +11,7 @@ function Chip({ children, color }) {
     tag:      'bg-indigo-900/60 text-indigo-300',
     location: 'bg-emerald-900/60 text-emerald-300',
     agent:    'bg-purple-900/60 text-purple-300',
+    human:    'bg-teal-900/60 text-teal-300',
     due:      'bg-amber-900/60 text-amber-300',
   }
   return (
@@ -36,12 +37,13 @@ function TaskRow({ task, isSelected, onSelect }) {
       <span className="task-text text-sm leading-snug">
         {stripTokens(task.text)}
       </span>
-      {(task.tags?.length > 0 || task.location || task.assignee_agent || task.due) && (
+      {(task.tags?.length > 0 || task.location || task.assignee_agent || task.assignee_human || task.due) && (
         <div className="task-meta mt-1 flex flex-wrap gap-1">
           {task.tags?.map(t => <Chip key={t} color="tag">#{t}</Chip>)}
-          {task.location    && <Chip color="location">@{task.location}</Chip>}
+          {task.location       && <Chip color="location">@{task.location}</Chip>}
           {task.assignee_agent && <Chip color="agent">+{task.assignee_agent}</Chip>}
-          {task.due         && <Chip color="due">{task.due.slice(0, 10)}</Chip>}
+          {task.assignee_human && <Chip color="human">++{task.assignee_human}</Chip>}
+          {task.due            && <Chip color="due">{task.due.slice(0, 10)}</Chip>}
         </div>
       )}
       </div>
