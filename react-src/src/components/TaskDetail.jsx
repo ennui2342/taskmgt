@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import Markdown from 'react-markdown'
 import { stripTokens, annotations } from '../api'
 import { useUpdateTask, useDeleteTask } from '../hooks'
 
@@ -26,23 +27,6 @@ function Prop({ label, children }) {
 
 const PRIORITY_LABEL = { 1: 'High', 2: 'Medium', 3: 'Low' }
 
-function renderWithLinks(text) {
-  const linkRe = /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g
-  const result = []
-  let last = 0, match
-  while ((match = linkRe.exec(text)) !== null) {
-    if (match.index > last) result.push(text.slice(last, match.index))
-    result.push(
-      <a key={match.index} href={match[2]} target="_blank" rel="noopener noreferrer"
-         className="text-indigo-400 hover:underline">
-        {match[1]}
-      </a>
-    )
-    last = match.index + match[0].length
-  }
-  if (last < text.length) result.push(text.slice(last))
-  return result
-}
 
 function EditForm({ selected, onDone }) {
   const [text, setText] = useState(selected.text)
@@ -183,8 +167,8 @@ export default function TaskDetail({ selected, onDeselect }) {
         return notes ? (
           <div className="mt-6">
             <div className="mb-2 text-xs font-medium uppercase tracking-wider text-gray-500">Notes</div>
-            <div className="whitespace-pre-wrap rounded bg-gray-800 px-3 py-2 text-sm text-gray-300">
-              {renderWithLinks(notes)}
+            <div className="prose prose-sm prose-invert max-w-none rounded bg-gray-800 px-3 py-2 [&_a]:text-indigo-400 [&_a]:hover:underline">
+              <Markdown>{notes}</Markdown>
             </div>
           </div>
         ) : null
