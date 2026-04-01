@@ -26,6 +26,24 @@ function Prop({ label, children }) {
 
 const PRIORITY_LABEL = { 1: 'High', 2: 'Medium', 3: 'Low' }
 
+function renderWithLinks(text) {
+  const linkRe = /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g
+  const result = []
+  let last = 0, match
+  while ((match = linkRe.exec(text)) !== null) {
+    if (match.index > last) result.push(text.slice(last, match.index))
+    result.push(
+      <a key={match.index} href={match[2]} target="_blank" rel="noopener noreferrer"
+         className="text-indigo-400 hover:underline">
+        {match[1]}
+      </a>
+    )
+    last = match.index + match[0].length
+  }
+  if (last < text.length) result.push(text.slice(last))
+  return result
+}
+
 function EditForm({ selected, onDone }) {
   const [text, setText] = useState(selected.text)
   const updateTask = useUpdateTask()
@@ -162,16 +180,12 @@ export default function TaskDetail({ selected, onDeselect }) {
 
       {(() => {
         const notes = annotations(selected.text)
-        return notes.length > 0 ? (
+        return notes ? (
           <div className="mt-6">
             <div className="mb-2 text-xs font-medium uppercase tracking-wider text-gray-500">Notes</div>
-            <ul className="space-y-1.5">
-              {notes.map((note, i) => (
-                <li key={i} className="whitespace-pre-wrap rounded bg-gray-800 px-3 py-2 text-sm text-gray-300">
-                  {note}
-                </li>
-              ))}
-            </ul>
+            <div className="whitespace-pre-wrap rounded bg-gray-800 px-3 py-2 text-sm text-gray-300">
+              {renderWithLinks(notes)}
+            </div>
           </div>
         ) : null
       })()}

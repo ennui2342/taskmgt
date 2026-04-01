@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { useTasks, useTask, useFilters } from '../hooks'
 import { viewToFilter } from '../api'
@@ -12,12 +12,17 @@ export default function MainPanel({ favourite, mobile, selectedId: controlledId,
   const [searchParams] = useSearchParams()
   const tag      = searchParams.get('tag')
   const location = searchParams.get('location')
+  const taskParam = searchParams.get('task')
 
-  const [_selectedId, _setSelectedId] = useState(null)
+  const [_selectedId, _setSelectedId] = useState(() => taskParam ? parseInt(taskParam) : null)
   const selectedId = mobile ? controlledId : _selectedId
   const [showClosed, setShowClosed] = useState(false)
 
-  useEffect(() => { _setSelectedId(null); setShowClosed(false) }, [view, tag, location, idx])
+  const isFirstRender = useRef(true)
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return }
+    _setSelectedId(null); setShowClosed(false)
+  }, [view, tag, location, idx])
 
   const { data: favs = [] } = useFilters()
 

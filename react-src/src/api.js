@@ -67,10 +67,7 @@ export function stripTokens(text) {
   return firstLine.replace(/\s*([!#@^=§>][^\s]+|\+\+?[^\s]+|<[^\s]+)/g, '').trim()
 }
 
-// Lines after the first that start with "* " are annotation/note lines.
-// The literal "\n" sequence in a note is unescaped to a real newline.
+// Lines after the first are free-form notes (markdown supported).
 export function annotations(text) {
-  return (text ?? '').split('\n').slice(1)
-    .filter(line => line.startsWith('* '))
-    .map(line => line.slice(2).replace(/\\n/g, '\n'))
+  return (text ?? '').split('\n').slice(1).join('\n').trim()
 }

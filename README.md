@@ -43,6 +43,25 @@ curl "http://localhost:8081/tasks?filter=$(echo -n '(&(#next)(|(#read)(#write)))
 
 See [`docs/api.md`](docs/api.md#filter-syntax) for the full filter reference.
 
+## Web interface
+
+| URL | Description |
+|---|---|
+| `/view/all` | All open tasks |
+| `/view/inbox` | Tasks with no tags |
+| `/view/today` | Tasks due today |
+| `/view/overdue` | Overdue tasks |
+| `/view/wait` | Waiting tasks |
+| `/view/started` | In-progress tasks |
+| `/view/closed` | Closed tasks |
+| `/view/tag?tag=<name>` | Tasks with a specific tag |
+| `/view/location?location=<name>` | Tasks at a specific location |
+| `/favourite/<idx>` | Saved filter by index |
+
+Append `?task=<id>` to any view URL to open a specific task directly, e.g. `/view/all?task=42`.
+
+Task notes (lines 2+ of the task text) are rendered as markdown. `[label](url)` links open in a new tab.
+
 ## Design philosophy
 
 The backend is a **timestamped text store with a query layer** — analogous to a filesystem. It records when things happened, indexes content for search, but does not prescribe how tasks are managed.

@@ -82,17 +82,19 @@ Provenance is embedded directly in the task text by the client using the `<sourc
 
 This means the text is always a self-contained record of the task's lifecycle.
 
-### Annotations
+### Notes
 
-Lines after the first line that begin with `* ` are annotation lines — notes attached to the task. Newlines within a note are escaped as `\n`.
+Lines after the first line are free-form notes attached to the task. Markdown is supported and rendered in the web interface (including `[label](url)` links).
 
 ```
 Buy milk !2 @supermarket
-* Check expiry dates
-* Get the 2L bottle\nOr 1L if unavailable
+Check expiry dates.
+Get the 2L bottle — or 1L if unavailable.
+
+See also [shopping list](https://example.com/list)
 ```
 
-The `name` field in API responses strips all tokens from the first line only. Annotation lines are preserved in `text` but not reflected in `name`.
+The `name` field in API responses strips all tokens from the first line only. Note lines are preserved in `text` but not reflected in `name`.
 
 ---
 
