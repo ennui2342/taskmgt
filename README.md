@@ -60,7 +60,7 @@ See [`docs/api.md`](docs/api.md#filter-syntax) for the full filter reference.
 
 Append `?task=<id>` to any view URL to open a specific task directly, e.g. `/view/all?task=42`.
 
-Task notes (lines 2+ of the task text) are rendered as markdown. `[label](url)` links open in a new tab.
+Task notes (lines 2+ of the task text) are rendered as full markdown — bold, italic, headings, lists, inline code, and `[label](url)` links are all supported. Links open in a new tab.
 
 ## Design philosophy
 

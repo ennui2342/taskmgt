@@ -15,7 +15,7 @@ Interactive docs (Swagger UI): `http://localhost:8081/docs`
 | Field | Type | Description |
 |---|---|---|
 | `id` | string (UUID) | Unique task identifier |
-| `text` | string | Raw task text including SmartAdd tokens and annotation lines |
+| `text` | string | Raw task text — first line contains SmartAdd tokens, subsequent lines are free-form markdown notes |
 | `name` | string | Display name — first line of `text` with all tokens stripped |
 | `status` | string | `"open"`, `"wait"`, `"started"`, or `"closed"` |
 | `due` | string \| null | ISO 8601 datetime (UTC) |
@@ -34,7 +34,7 @@ Provenance (who/what created the task) is stored in the `text` field via the `<s
 
 ## SmartAdd Format
 
-Tasks are created and updated using **SmartAdd text** — a natural-language string with embedded tokens. All tokens apply only to the first line of the text; subsequent lines are annotation lines (see below).
+Tasks are created and updated using **SmartAdd text** — a natural-language string with embedded tokens. All tokens apply only to the first line of the text; subsequent lines are free-form markdown notes (see [Notes](#notes) below).
 
 The task text is the **source of truth**: all indexed DB fields are derived from tokens in the text. The API also injects provenance tokens into the text automatically (see [Provenance Tokens](#provenance-tokens)).
 
@@ -84,17 +84,19 @@ This means the text is always a self-contained record of the task's lifecycle.
 
 ### Notes
 
-Lines after the first line are free-form notes attached to the task. Markdown is supported and rendered in the web interface (including `[label](url)` links).
+Lines after the first line are free-form notes attached to the task. The web interface renders them as full markdown — bold, italic, headings, lists, inline code, and `[label](url)` links are all supported.
 
 ```
 Buy milk !2 @supermarket
-Check expiry dates.
-Get the 2L bottle — or 1L if unavailable.
+Check expiry dates — get **2L** if available.
 
-See also [shopping list](https://example.com/list)
+- Semi-skimmed
+- Or oat milk as backup
+
+See [shopping list](https://example.com/list) for details.
 ```
 
-The `name` field in API responses strips all tokens from the first line only. Note lines are preserved in `text` but not reflected in `name`.
+The `name` field in API responses strips all tokens from the first line only. Note lines are preserved verbatim in `text` but not reflected in `name`.
 
 ---
 
