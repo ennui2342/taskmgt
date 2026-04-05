@@ -168,7 +168,7 @@ export default function TaskDetail({ selected, onDeselect }) {
           <div className="mt-6">
             <div className="mb-2 text-xs font-medium uppercase tracking-wider text-gray-500">Notes</div>
             <div className="prose prose-sm prose-invert max-w-none rounded bg-gray-800 px-3 py-2 [&_a]:text-indigo-400 [&_a]:hover:underline">
-              <Markdown>{notes}</Markdown>
+              <Markdown components={{ a: ({ node, ...props }) => <a target="_blank" rel="noreferrer" {...props} /> }}>{notes}</Markdown>
             </div>
           </div>
         ) : null
