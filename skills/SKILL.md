@@ -58,23 +58,21 @@ Tokens are embedded in task text (first line only). Order doesn't matter.
 
 Subsequent lines starting with `* ` are preserved as annotations.
 
+> **Multi-line tasks:** All SmartAdd tokens — including `<source` — belong on the **first line only**. When a task includes note lines (`* ...`), the provenance token must still appear on line 1, not appended to the last note line.
+
 ---
 
 ## Provenance Convention
 
 Every task records who or what created it via the `<source:timestamp` token embedded in the task text. The API stamps the timestamp; clients embed the `<source` part.
 
-The `tm` CLI injects provenance automatically. Use `--provenance` to override.
-
 | Source | Creation token | Completion token |
 |--------|---------------|-----------------|
 | Direct CLI use (default) | `<cli.<username>` | `>cli.<username>` |
-| Claude Code agent | `<cli.claude-code.<username>` | `>cli.claude-code.<username>` |
+| Claude Code agent | `<cli.claude-code.<project>` | `>cli.claude-code.<project>` |
 | aswarm pipeline | `<aswarm.<pipeline>.<agent>` | `>aswarm.<pipeline>.<agent>` |
 
-**Claude Code agents should always pass `--provenance cli.claude-code.<username>`** so tasks are attributed correctly on both creation and close.
-
-Format: `type.tool.user` — three dot-separated segments. The `--provenance` flag applies to both `tm add` (creation) and `tm update --close` (completion).
+**Claude Code agents should always use `<cli.claude-code.<project>`** where `<project>` is the literal basename of the working directory (`basename $(pwd)`). This creates a per-project task queue that a headless agent can pick up by querying `++cli.claude-code.<project>`.
 
 The API stamps `:timestamp` onto the provenance token; clients are responsible for embedding the actor part.
 
@@ -157,14 +155,12 @@ Returns the full task object (same shape as list items).
 
 ```bash
 tm add "Buy milk #shopping @store !2"
-tm add "Analyse dataset +analyst.analyse #.project-x" --provenance aswarm.orchestrator.planner
+tm add "Analyse dataset +analyst.analyse #.project-x <aswarm.orchestrator.planner" 
 tm add "Call Alice ^tomorrow =30m ++alice"
 
-# Claude Code agent — always specify provenance
-tm add "Review PR #dev !1" --provenance cli.claude-code.ennui2342
+# Claude Code agent — always specify provenance using project basename
+tm add "Review PR #dev !1 <cli.claude-code.taskmgt"
 ```
-
-If no `<source` token is present in the text, `tm` automatically injects `<cli.<USER>` (where `USER` is the current OS user). Use `--provenance` to override this.
 
 Returns the created task object (HTTP 201).
 
@@ -227,16 +223,31 @@ Filters store raw DSL expressions (not base64). Indices are 0-based from `filter
 
 ---
 
+## Claude Code Self-Assignment Convention
+
+To assign a task to the Claude Code instance running in a specific project, use `+cli.claude-code.<project>` where `<project>` is `basename $(pwd)`:
+
+```bash
+# Assign a task to the Claude Code instance in the "taskmgt" project
+tm --api http://tasks.k8s.ecafe.org add "Refactor filter component !2 #dev +cli.claude-code.taskmgt <cli.claude-code.taskmgt"
+
+# A headless agent starting up queries its own queue
+project=$(basename $(pwd))
+tm --api http://tasks.k8s.ecafe.org list --filter "+cli.claude-code.$project"
+```
+
+This gives each project its own task queue. A headless Claude Code agent can start up, inspect its queue, and work through assigned tasks autonomously.
+
+---
+
 ## Common Agent Workflows
 
 ### Email triage → tasks
 
 ```bash
 # Create tasks from emails (Claude Code agent pattern)
-tm --api http://tasks.k8s.ecafe.org add "Reply to John re: proposal !2 #email ++john ^friday" \
-  --provenance cli.claude-code.ennui2342
-tm --api http://tasks.k8s.ecafe.org add "Review invoice from Acme #email #finance !1" \
-  --provenance cli.claude-code.ennui2342
+tm --api http://tasks.k8s.ecafe.org add "Reply to John re: proposal !2 #email ++john ^friday <cli.claude-code.taskmgt"
+tm --api http://tasks.k8s.ecafe.org add "Review invoice from Acme #email #finance !1 <cli.claude-code.taskmgt"
 
 # Review email tasks
 tm --api http://tasks.k8s.ecafe.org list --tag email
@@ -249,8 +260,7 @@ tm --api http://tasks.k8s.ecafe.org update <id> --close
 
 ```bash
 # Orchestrator creates subtask for analyst agent
-tm --api http://tasks.k8s.ecafe.org add "Analyse section 3 of dataset #.project-x +analyst.analyse" \
-  --provenance aswarm.orchestrator.planner
+tm --api http://tasks.k8s.ecafe.org add "Analyse section 3 of dataset #.project-x +analyst.analyse <aswarm.orchestrator.planner"
 
 # Analyst queries its queue
 tm --api http://tasks.k8s.ecafe.org list --filter "+analyst.analyse"

@@ -53,7 +53,7 @@ The task text is the **source of truth**: all indexed DB fields are derived from
 | `<source:timestamp` | creation provenance | `Task <cli.claude-code.ennui2342:2026-03-30T14:00:00Z` |
 | `>actor:timestamp` | completion provenance | `Done >cli.ennui2342:2026-03-30T15:00:00Z` |
 
-**Due date** accepts ISO dates (`2026-04-15`), ISO datetimes, or natural language understood by [dateparser](https://dateparser.readthedocs.io/) (`tomorrow`, `next friday`, `in 3 days`).
+**Due date** accepts ISO dates (`2026-04-15`), ISO datetimes, or natural language understood by [dateparser](https://dateparser.readthedocs.io/) (`tomorrow`, `next friday`, `in 3 days`, `7d`). Natural language is resolved to a UTC ISO-8601 timestamp server-side before storage.
 
 **Status values**: `open` (default), `wait` (blocked/waiting), `started` (in progress), `closed`.
 

@@ -1,4 +1,4 @@
-.PHONY: react-dev react-up build test test-api install-cli logs ps help
+.PHONY: react-dev react-up build test test-api install-cli logs ps rename-tag delete-tag help
 
 # ── React ─────────────────────────────────────────────────────────────────────
 
@@ -29,6 +29,21 @@ install-cli: ## Install the tm CLI and symlink to /usr/local/bin
 	mkdir -p ~/.claude/skills/tm
 	cp skills/SKILL.md ~/.claude/skills/tm/
 	@echo "tm installed: $$(which tm)"
+
+# ── DB Admin (live k8s) ───────────────────────────────────────────────────────
+
+rename-tag: ## Rename a tag in the live DB: make rename-tag FROM=old TO=new
+	$(if $(FROM),,$(error FROM is required))
+	$(if $(TO),,$(error TO is required))
+	kubectl --namespace taskmgt exec -it \
+		$$(kubectl --namespace taskmgt get pod -l app=api -o jsonpath='{.items[0].metadata.name}') \
+		-- bin/taskdb --db /data/tasks.db rename-tag $(FROM) $(TO)
+
+delete-tag: ## Delete a tag from the live DB: make delete-tag TAG=name
+	$(if $(TAG),,$(error TAG is required))
+	kubectl --namespace taskmgt exec -it \
+		$$(kubectl --namespace taskmgt get pod -l app=api -o jsonpath='{.items[0].metadata.name}') \
+		-- bin/taskdb --db /data/tasks.db delete-tag $(TAG)
 
 # ── Ops ───────────────────────────────────────────────────────────────────────
 
