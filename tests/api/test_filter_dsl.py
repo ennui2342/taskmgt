@@ -184,3 +184,16 @@ def test_status_filter_in_dsl_prefix():
     assert "status='wait'" in where
     assert TAG_SUBQUERY in where
     assert "location=?" in where
+
+
+def test_dsl_not_status_atom():
+    """§wait used as a DSL atom inside NOT should negate wait status, not set scope."""
+    where, params = parse_filter("(&(#-next)(!(§wait)))")
+    # Default scope (not overridden — §wait is inside the DSL, not a scope prefix)
+    assert "status!='closed'" in where
+    # Tag -next must match
+    assert TAG_SUBQUERY in where
+    assert "-next" in params
+    # The NOT(§wait) must exclude wait tasks
+    assert "NOT" in where.upper()
+    assert "status='wait'" in where

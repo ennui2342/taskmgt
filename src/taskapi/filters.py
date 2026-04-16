@@ -5,11 +5,13 @@ _STATUS_FILTER_RE = re.compile(r"\s*§(open|wait|started|closed)")
 
 
 def parse_filter(s: str) -> tuple[str, list]:
-    # §status token overrides the default status scope
-    sm = _STATUS_FILTER_RE.search(s)
+    # §status token overrides the default status scope only when it appears
+    # *before* any DSL expression — inside a DSL tree it is treated as an atom.
+    pre_dsl, _, _ = s.partition("(")
+    sm = _STATUS_FILTER_RE.search(pre_dsl)
     if sm:
         status_prefix = f"status='{sm.group(1)}'"
-        s = _STATUS_FILTER_RE.sub("", s).strip()
+        s = (s[: sm.start()] + s[sm.end() :]).strip()
     else:
         status_prefix = "status!='closed'"
 
@@ -117,4 +119,6 @@ def _compile_atom(token: str) -> tuple[str, list]:
         return "due BETWEEN ? AND ?", [today_start, today_end]
     if token == "^overdue":
         return "due IS NOT NULL AND due < ?", [today_start]
+    if token.startswith("§") and token[1:] in ("open", "wait", "started", "closed"):
+        return f"status='{token[1:]}'", []
     return "", []
